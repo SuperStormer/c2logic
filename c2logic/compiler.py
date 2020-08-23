@@ -25,14 +25,14 @@ class Compiler(c_ast.NodeVisitor):
 	"""
 	def __init__(self, opt_level=0):
 		self.opt_level = opt_level
-		self.functions = []
+		self.functions: dict = None
 		self.curr_function: Function = None
 		self.loop_start: int = None
 		self.loop_end_jumps: list = None
 		#self.cond_jump_offset: int = None
 	
 	def compile(self, filename: str):
-		self.functions = []
+		self.functions = {}
 		self.curr_function = None
 		self.loop_start = None
 		self.cond_jump_offset = None
@@ -41,10 +41,10 @@ class Compiler(c_ast.NodeVisitor):
 		#TODO actually handle functions properly
 		out = []
 		offset = 0
-		for function in self.functions:
+		for function in self.functions.values():
 			function.start = offset
 			offset += len(function.instructions)
-		for function in self.functions:
+		for function in self.functions.values():
 			instructions = function.instructions
 			out2 = []
 			for instruction in instructions:
@@ -112,15 +112,16 @@ class Compiler(c_ast.NodeVisitor):
 	
 	#visitors
 	def visit_FuncDef(self, node):  # function definitions
+		func_name = node.decl.name
 		func_decl = node.decl.type
 		args = [arg_decl.name for arg_decl in func_decl.args.params]
 		
-		self.curr_function = Function(node.decl.name, args, [], None)
+		self.curr_function = Function(func_name, args, [], None)
 		self.visit(node.body)
 		#in case for loop is the last thing in a function to ensure the jump target is valid
 		if self.loop_start is not None:
 			self.push(Noop())
-		self.functions.append(self.curr_function)
+		self.functions[func_name] = self.curr_function
 	
 	def visit_Decl(self, node):
 		if isinstance(node.type, TypeDecl):  # variable declaration
@@ -135,9 +136,8 @@ class Compiler(c_ast.NodeVisitor):
 				#TODO structs
 				raise NotImplementedError(node)
 		elif isinstance(node.type, Enum):
-			if node.type.name != "RadarTarget":
-				#TODO enums
-				raise NotImplementedError(node)
+			#TODO enums
+			raise NotImplementedError(node)
 		else:
 			raise NotImplementedError(node)
 	
@@ -322,9 +322,10 @@ def main():
 	import argparse
 	parser = argparse.ArgumentParser()
 	parser.add_argument("file")
-	parser.add_argument("-O", "--optimization-level", type=int, default=1)
+	parser.add_argument("-O", "--optimization-level", type=int, choices=range(3), default=1)
+	parser.add_argument("-o", "--output", type=argparse.FileType('w'), default="-")
 	args = parser.parse_args()
-	print(Compiler(args.optimization_level).compile(args.file))
+	print(Compiler(args.optimization_level).compile(args.file), file=args.output)
 
 if __name__ == "__main__":
 	main()

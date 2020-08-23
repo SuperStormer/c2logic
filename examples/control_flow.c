@@ -1,20 +1,28 @@
 #include "../include/mindustry.h"
+/*expected output:
+5678
+0246
+0 is not 3
+*/
 extern struct MindustryObject message1;
 void main(void) {
-	int i = 0;
+	int i;
 	for (i = 5; i < 9; i++) {
 		printd(i);
 	}
+	i = 0;
+	print("\n");
 	do {
 		if (i % 2 == 1) {
+			i++;
 			continue;
 		}
 		printd(i);
-		++i;
-		if (i == 8) {
+		if (i == 6) {
 			break;
 		}
-	} while (!(i >= 10));
+		++i;
+	} while (i < 10);
 	print("\n");
 	i = 0;
 	printd(i);
@@ -25,5 +33,4 @@ void main(void) {
 	}
 	print("\n");
 	printflush(message1);
-	asm("noop");
 }
