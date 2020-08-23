@@ -1,8 +1,11 @@
 #include "../include/mindustry.h"
 extern struct MindustryObject message1;
 void main(void) {
-	double i = 0;
+	int i = 0;
 	while (i < 10) {
+		if (i % 2 == 1) {
+			continue;
+		}
 		printd(i);
 		i++;
 		if (i == 4) {

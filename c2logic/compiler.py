@@ -25,6 +25,11 @@ class Compiler(c_ast.NodeVisitor):
 	"""
 	def __init__(self, opt_level=0):
 		self.opt_level = opt_level
+		self.functions = []
+		self.curr_function: Function = None
+		self.loop_start: int = None
+		self.loop_end_jumps:list = None
+		#self.cond_jump_offset: int = None
 	
 	def compile(self, filename: str):
 		self.functions = []
@@ -72,6 +77,25 @@ class Compiler(c_ast.NodeVisitor):
 			#self.push(Set(varname, self.pop().src))
 		else:
 			self.push(Set(varname, "__rax"))
+	
+	def push_body_jump(self):
+		# jump over loop/if body when cond is false
+		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
+			try:
+				self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop().inverse())))
+			except KeyError:
+				self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+		else:
+			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+	
+	def optimize_psuedofunc_args(self, args):
+		if self.opt_level >= 1:
+			for i, arg in reversed(list(enumerate(args))):
+				if self.can_avoid_indirection(arg):
+					args[i] = self.pop().src
+				else:
+					break
+		return args
 	
 	#visitors
 	def visit_FuncDef(self, node):  # function definitions
@@ -148,47 +172,29 @@ class Compiler(c_ast.NodeVisitor):
 		self.visit(node.init)
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
-		# jump over loop body when cond is false
-		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
-			#TODO fix this
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
-			#self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
-		else:
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
-		self.cond_jump_offset = len(self.curr_function.instructions) - 1
-		self.visit(node.stmt)
+		self.push_body_jump()
+		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
+		self.visit(node.stmt)  # loop body
 		self.visit(node.next)
 		#jump to start of loop
-		self.push(RelativeJump(self.loop_start, JumpCondition("==", "0", "0")))
-		self.curr_function.instructions[self.cond_jump_offset].offset = len(
-			self.curr_function.instructions
-		)
+		self.push(RelativeJump(self.loop_start, JumpCondition.always))
+		for offset in self.loop_end_jumps:
+			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
 	
 	def visit_While(self, node):
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
-		# jump over loop body when cond is false
-		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
-			#TODO fix this
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
-			#self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
-		else:
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+		self.push_body_jump()
 		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
 		self.visit(node.stmt)
 		#jump to start of loop
-		self.push(RelativeJump(self.loop_start, JumpCondition("==", "0", "0")))
+		self.push(RelativeJump(self.loop_start, JumpCondition.always))
 		for offset in self.loop_end_jumps:
 			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
 	
 	def visit_If(self, node):
 		self.visit(node.cond)
-		# jump over if body when cond is false
-		#TODO optimize for when cond is a binary operation
-		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
-		else:
-			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+		self.push_body_jump()
 		cond_jump_offset = len(self.curr_function.instructions) - 1
 		self.visit(node.iftrue)
 		#jump over else body from end of if body
@@ -207,6 +213,9 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_Break(self, node):
 		self.push(RelativeJump(None, JumpCondition.always))
 		self.loop_end_jumps.append(len(self.curr_function.instructions) - 1)
+	
+	def visit_Continue(self, node):
+		self.push(RelativeJump(self.loop_start, JumpCondition.always))
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
@@ -239,12 +248,7 @@ class Compiler(c_ast.NodeVisitor):
 					self.visit(arg)
 				self.set_to_rax(f"__radar_arg{i}")
 				args.append(f"__radar_arg{i}")
-			if self.opt_level >= 1:
-				for i, arg in reversed(list(enumerate(args))):
-					if self.can_avoid_indirection(arg):
-						args[i] = self.pop().src
-					else:
-						break
+			args = self.optimize_psuedofunc_args(args)
 			self.push(Radar("__rax", *args))  #pylint: disable=no-value-for-parameter
 		elif name == "sensor":
 			self.visit(node.args.exprs[0])
@@ -277,12 +281,7 @@ class Compiler(c_ast.NodeVisitor):
 				self.visit(arg)
 				self.set_to_rax(f"__shoot_arg{i}")
 				args.append(f"__shoot_arg{i}")
-			if self.opt_level >= 1:
-				for i, arg in reversed(list(enumerate(args))):
-					if self.can_avoid_indirection(arg):
-						args[i] = self.pop().src
-					else:
-						break
+			args = self.optimize_psuedofunc_args(args)
 			self.push(Shoot(*args))  #pylint: disable=no-value-for-parameter
 		elif name == "end":
 			self.push(End())

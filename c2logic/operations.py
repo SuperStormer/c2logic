@@ -27,3 +27,5 @@ condition_ops = {
 }
 
 unary_ops = {"-": "negate", "~": "not"}
+
+binary_op_inverses = {"==": "!=", "!=": "==", "<": ">=", "<=": ">", ">": "<=", ">=": "<"}

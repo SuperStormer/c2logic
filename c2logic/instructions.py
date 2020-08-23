@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .operations import binary_ops, condition_ops, unary_ops
+from .operations import binary_op_inverses, binary_ops, condition_ops, unary_ops
 
 class Instruction:
 	pass
@@ -22,6 +22,9 @@ class BinaryOp(Instruction):
 		self.right = right
 		self.op = op
 		self.dest = dest
+	
+	def inverse(self):
+		return BinaryOp(self.dest, self.left, self.right, binary_op_inverses[self.op])
 	
 	def __str__(self):
 		return f"bop {binary_ops[self.op]} {self.left} {self.right} {self.dest}"
@@ -53,7 +56,7 @@ JumpCondition.always = JumpCondition("==", "0", "0")
 class RelativeJump(Instruction):
 	def __init__(self, offset: int, cond: JumpCondition):
 		self.offset = offset
-		self.func_start = None
+		self.func_start: int = None
 		self.cond = cond
 	
 	def __str__(self):

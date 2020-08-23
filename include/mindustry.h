@@ -4,7 +4,7 @@ struct MindustryObject {};
 void _asm(char* code);
 void print(char* s);
 void printd(double s);
-void printflush(struct MindustryObject);
+void printflush(struct MindustryObject msg_block);
 
 struct MindustryObject radar(struct MindustryObject obj, char* target1, char* target2,
 							 char* target3, char* sort, double index);

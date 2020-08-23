@@ -13,5 +13,5 @@ setuptools.setup(
 	url="https://github.com/SuperStormer/c2logic",
 	project_urls={"Source Code": "https://github.com/SuperStormer/c2logic"},
 	entry_points={"console_scripts": ["c2logic=c2logic:main"]},
-	install_requires=["pycparser>=2.20"]
+	install_requires=["pycparser~=2.20"]
 )

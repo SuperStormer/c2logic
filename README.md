@@ -6,15 +6,13 @@ Compiles C code to Mindustry logic. Still in beta, so compiled output may not be
 
 `python3 -m c2logic filename -O optimization_level`
 
-where `filename` is a string and `optimization_level` is an int
+where `filename` is a string and `optimization_level` is an integer.
 
 See [examples](./examples) for API sample usage.
 
 # Documentation
 
-TODO
-
-See `include/mindustry.h`.
+See `include/mindustry.h` for API definitions.
 
 # Unsupported Features
 
