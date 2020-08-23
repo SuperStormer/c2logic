@@ -41,7 +41,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = None
 		self.cond_jump_offset = None
 		ast = parse_file(filename, use_cpp=True, cpp_args=["-I", "include/"])
-		print(ast)
 		self.visit(ast)
 		#TODO actually handle functions properly
 		out = []
@@ -93,8 +92,6 @@ class Compiler(c_ast.NodeVisitor):
 		#in case for loop is the last thing in a function to ensure the jump target is valid
 		#TODO avoid this when for loop isn't last thing
 		self.push(Noop())
-		
-		print(self.curr_function)
 		self.functions.append(self.curr_function)
 	
 	def visit_Decl(self, node):
@@ -160,7 +157,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
 		# jump over loop body when cond is false
-		print(self.peek())
 		if isinstance(self.peek(), BinaryOp):
 			self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
 		else:
@@ -302,7 +298,12 @@ class Compiler(c_ast.NodeVisitor):
 			raise NotImplementedError(node)
 
 def main():
-	print(Compiler(opt_level=1).compile("examples/test.c"))
+	import argparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument("file")
+	parser.add_argument("-O", "--optimization-level", type=int, default=1)
+	args = parser.parse_args()
+	print(Compiler(args.optimization_level).compile(args.file))
 
 if __name__ == "__main__":
 	main()
