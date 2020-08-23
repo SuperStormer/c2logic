@@ -54,7 +54,7 @@ class Compiler(c_ast.NodeVisitor):
 			out2 = []
 			for instruction in instructions:
 				if isinstance(instruction, RelativeJump):
-					instruction.func_start = function.start  #FIXME
+					instruction.func_start = function.start
 				out2.append(str(instruction))
 			out.append("\n".join(out2))
 		return "\n\n".join(out)
@@ -178,7 +178,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
 		# jump over loop body when cond is false
-		print(self.peek())
 		if isinstance(self.peek(), BinaryOp):
 			self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
 		else:
@@ -189,6 +188,33 @@ class Compiler(c_ast.NodeVisitor):
 		self.push(RelativeJump(self.loop_start, JumpCondition("==", "0", "0")))
 		for offset in self.loop_end_jumps:
 			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
+	
+	def visit_If(self, node):
+		self.visit(node.cond)
+		# jump over if body when cond is false
+		#TODO optimize for when cond is a binary operation
+		if isinstance(self.peek(), BinaryOp):
+			self.push(RelativeJump(None, JumpCondition("!=", "__rax", "0")))
+		else:
+			self.push(RelativeJump(None, JumpCondition("!=", "__rax", "0")))
+		cond_jump_offset = len(self.curr_function.instructions) - 1
+		self.visit(node.iftrue)
+		#jump over else body from end of if body
+		if node.iffalse is not None:
+			self.push(RelativeJump(None, JumpCondition("==", "0", "0")))
+			cond_jump_offset2 = len(self.curr_function.instructions) - 1
+		self.curr_function.instructions[cond_jump_offset].offset = len(
+			self.curr_function.instructions
+		)
+		if node.iffalse is not None:
+			self.visit(node.iffalse)
+			self.curr_function.instructions[cond_jump_offset2].offset = len(
+				self.curr_function.instructions
+			)
+	
+	def visit_Break(self, node):
+		self.push(RelativeJump(None, JumpCondition("==", "0", "0")))
+		self.loop_end_jumps.append(len(self.curr_function.instructions) - 1)
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
