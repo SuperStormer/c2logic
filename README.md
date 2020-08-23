@@ -1,6 +1,6 @@
 # c2logic
 
-Compiles C code to Mindustry logic.
+Compiles C code to Mindustry logic. Still in beta, so compiled output may not be fully optimized.
 
 # Usage
 
