@@ -1,4 +1,4 @@
-#include "mindustry.h"
+#include "../include/mindustry.h"
 extern struct MindustryObject message1;
 extern struct MindustryObject swarmer1;
 extern struct MindustryObject conveyor1;

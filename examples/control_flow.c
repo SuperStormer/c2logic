@@ -1,10 +1,13 @@
-#include "mindustry.h"
+#include "../include/mindustry.h"
 extern struct MindustryObject message1;
 void main(void) {
 	double i = 0;
 	while (i < 10) {
 		printd(i);
 		i++;
+		if (i == 4) {
+			break;
+		}
 	}
 	print("\n");
 	i = 0;

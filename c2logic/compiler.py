@@ -1,5 +1,5 @@
 from pycparser.c_ast import Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
-from .instructions import BinaryOp, Enable, JumpCondition, Print, PrintFlush, Radar, RawAsm, RelativeJump, Sensor, Shoot, UnaryOp, Instruction, Set, Noop
+from .instructions import BinaryOp, Enable, End, JumpCondition, Print, PrintFlush, Radar, RawAsm, RelativeJump, Sensor, Shoot, UnaryOp, Instruction, Set, Noop
 from pycparser import c_ast, parse_file
 from dataclasses import dataclass
 
@@ -193,7 +193,7 @@ class Compiler(c_ast.NodeVisitor):
 		self.visit(node.iftrue)
 		#jump over else body from end of if body
 		if node.iffalse is not None:
-			self.push(RelativeJump(None, JumpCondition("==", "0", "0")))
+			self.push(RelativeJump(None, JumpCondition.always))
 			cond_jump_offset2 = len(self.curr_function.instructions) - 1
 		self.curr_function.instructions[cond_jump_offset].offset = len(
 			self.curr_function.instructions
@@ -205,11 +205,12 @@ class Compiler(c_ast.NodeVisitor):
 			)
 	
 	def visit_Break(self, node):
-		self.push(RelativeJump(None, JumpCondition("==", "0", "0")))
+		self.push(RelativeJump(None, JumpCondition.always))
 		self.loop_end_jumps.append(len(self.curr_function.instructions) - 1)
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
+		#TODO avoid duplication in psuedo-function calls
 		if name == "_asm":
 			arg = node.args.exprs[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
@@ -283,7 +284,8 @@ class Compiler(c_ast.NodeVisitor):
 					else:
 						break
 			self.push(Shoot(*args))  #pylint: disable=no-value-for-parameter
-		
+		elif name == "end":
+			self.push(End())
 		else:
 			raise NotImplementedError(node)
 	

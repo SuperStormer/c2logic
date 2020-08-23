@@ -1,4 +1,4 @@
 -I ./include
 -Wall
 -Wextra
--std=c11
+-Wno-main-return-type

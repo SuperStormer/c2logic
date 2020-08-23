@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from .operations import binary_ops, condition_ops, unary_ops
 
 class Instruction:
@@ -34,18 +35,20 @@ class UnaryOp(Instruction):
 	def __str__(self):
 		return f"uop {unary_ops[self.op]} {self.src} {self.dest}"
 
+@dataclass
 class JumpCondition:
-	def __init__(self, op: str, left, right):
-		self.op = op
-		self.left = left
-		self.right = right
+	op: str
+	left: str
+	right: str
 	
 	@classmethod
 	def from_binaryop(cls, binop: BinaryOp):
-		return JumpCondition(binop.op, binop.left, binop.right)
+		return cls(binop.op, binop.left, binop.right)
 	
 	def __str__(self):
 		return f"{condition_ops[self.op]} {self.left} {self.right}"
+
+JumpCondition.always = JumpCondition("==", "0", "0")
 
 class RelativeJump(Instruction):
 	def __init__(self, offset: int, cond: JumpCondition):
@@ -109,6 +112,10 @@ class Shoot(Instruction):
 	
 	def __str__(self):
 		return f"control shoot {self.obj} {self.x} {self.y} {self.shoot} 0"
+
+class End(Instruction):
+	def __str__(self):
+		return "end"
 
 class RawAsm(Instruction):
 	def __init__(self, code: str):
