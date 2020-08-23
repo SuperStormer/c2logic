@@ -2,16 +2,19 @@
 extern struct MindustryObject message1;
 void main(void) {
 	int i = 0;
-	while (i < 10) {
+	for (i = 5; i < 9; i++) {
+		printd(i);
+	}
+	do {
 		if (i % 2 == 1) {
 			continue;
 		}
 		printd(i);
-		i++;
-		if (i == 4) {
+		++i;
+		if (i == 8) {
 			break;
 		}
-	}
+	} while (!(i >= 10));
 	print("\n");
 	i = 0;
 	printd(i);
@@ -22,4 +25,5 @@ void main(void) {
 	}
 	print("\n");
 	printflush(message1);
+	asm("noop");
 }

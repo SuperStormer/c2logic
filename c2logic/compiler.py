@@ -28,7 +28,7 @@ class Compiler(c_ast.NodeVisitor):
 		self.functions = []
 		self.curr_function: Function = None
 		self.loop_start: int = None
-		self.loop_end_jumps:list = None
+		self.loop_end_jumps: list = None
 		#self.cond_jump_offset: int = None
 	
 	def compile(self, filename: str):
@@ -79,7 +79,7 @@ class Compiler(c_ast.NodeVisitor):
 			self.push(Set(varname, "__rax"))
 	
 	def push_body_jump(self):
-		# jump over loop/if body when cond is false
+		""" jump over loop/if body when cond is false """
 		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
 			try:
 				self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop().inverse())))
@@ -87,6 +87,19 @@ class Compiler(c_ast.NodeVisitor):
 				self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 		else:
 			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+	
+	def start_loop(self, cond):
+		self.loop_start = len(self.curr_function.instructions)
+		self.visit(cond)
+		self.push_body_jump()
+		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
+	
+	def end_loop(self):
+		self.push(RelativeJump(self.loop_start, JumpCondition.always))
+		for offset in self.loop_end_jumps:
+			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
+		self.loop_start = None
+		self.loop_end_jumps = None
 	
 	def optimize_psuedofunc_args(self, args):
 		if self.opt_level >= 1:
@@ -105,8 +118,8 @@ class Compiler(c_ast.NodeVisitor):
 		self.curr_function = Function(node.decl.name, args, [], None)
 		self.visit(node.body)
 		#in case for loop is the last thing in a function to ensure the jump target is valid
-		#TODO avoid this when for loop isn't last thing
-		self.push(Noop())
+		if self.loop_start is not None:
+			self.push(Noop())
 		self.functions.append(self.curr_function)
 	
 	def visit_Decl(self, node):
@@ -136,9 +149,9 @@ class Compiler(c_ast.NodeVisitor):
 		else:  #augmented assignment(+=,-=,etc)
 			if self.can_avoid_indirection():
 				#avoid indirection through __rax
-				self.push(BinaryOp(varname, varname, self.pop().src, node.op[0]))
+				self.push(BinaryOp(varname, varname, self.pop().src, node.op[:-1]))
 			else:
-				self.push(BinaryOp(varname, varname, "__rax", node.op[0]))
+				self.push(BinaryOp(varname, varname, "__rax", node.op[:-1]))
 	
 	def visit_Constant(self, node):  # literals
 		self.push(Set("__rax", node.value))
@@ -163,34 +176,45 @@ class Compiler(c_ast.NodeVisitor):
 			varname = node.expr.name
 			self.push(Set("__rax", varname))
 			self.push(BinaryOp(varname, varname, "1", node.op[1]))
-		#TODO preincrement/predecrement
+		elif node.op == "++" or node.op == "--":
+			varname = node.expr.name
+			self.push(BinaryOp(varname, varname, "1", node.op[0]))
+			self.push(Set("__rax", varname))
+		elif node.op == "!":
+			self.visit(node.expr)
+			if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
+				try:
+					self.push(self.pop().inverse())
+				except KeyError:
+					self.push(BinaryOp("__rax", "__rax", "0", "=="))
+			else:
+				self.push(BinaryOp("__rax", "__rax", "0", "=="))
 		else:
 			self.visit(node.expr)
 			self.push(UnaryOp("__rax", "__rax", node.op))
 	
 	def visit_For(self, node):
 		self.visit(node.init)
-		self.loop_start = len(self.curr_function.instructions)
-		self.visit(node.cond)
-		self.push_body_jump()
-		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
+		self.start_loop(node.cond)
 		self.visit(node.stmt)  # loop body
 		self.visit(node.next)
-		#jump to start of loop
-		self.push(RelativeJump(self.loop_start, JumpCondition.always))
-		for offset in self.loop_end_jumps:
-			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
+		self.end_loop()
 	
 	def visit_While(self, node):
-		self.loop_start = len(self.curr_function.instructions)
-		self.visit(node.cond)
-		self.push_body_jump()
-		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
+		self.start_loop(node.cond)
 		self.visit(node.stmt)
-		#jump to start of loop
-		self.push(RelativeJump(self.loop_start, JumpCondition.always))
-		for offset in self.loop_end_jumps:
-			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
+		self.end_loop()
+	
+	def visit_DoWhile(self, node):
+		#jump over the condition on the first iterattion
+		self.push(RelativeJump(None, JumpCondition.always))
+		init_jump_offset = len(self.curr_function.instructions) - 1
+		self.start_loop(node.cond)
+		self.curr_function.instructions[init_jump_offset].offset = len(
+			self.curr_function.instructions
+		)
+		self.visit(node.stmt)
+		self.end_loop()
 	
 	def visit_If(self, node):
 		self.visit(node.cond)
@@ -220,7 +244,7 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_FuncCall(self, node):
 		name = node.name.name
 		#TODO avoid duplication in psuedo-function calls
-		if name == "_asm":
+		if name == "asm":
 			arg = node.args.exprs[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to _asm", node)

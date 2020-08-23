@@ -1,7 +1,7 @@
 #ifndef MINDUSTRY_H
 #define MINDUSTRY_H
 struct MindustryObject {};
-void _asm(char* code);
+// void _asm(char* code);
 void print(char* s);
 void printd(double s);
 void printflush(struct MindustryObject msg_block);
