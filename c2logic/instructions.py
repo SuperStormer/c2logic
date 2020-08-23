@@ -27,7 +27,7 @@ class BinaryOp(Instruction):
 		return BinaryOp(self.dest, self.left, self.right, binary_op_inverses[self.op])
 	
 	def __str__(self):
-		return f"bop {binary_ops[self.op]} {self.left} {self.right} {self.dest}"
+		return f"op {binary_ops[self.op]} {self.dest} {self.left} {self.right}"
 
 class UnaryOp(Instruction):
 	def __init__(self, dest, src, op):
@@ -36,7 +36,7 @@ class UnaryOp(Instruction):
 		self.op = op
 	
 	def __str__(self):
-		return f"uop {unary_ops[self.op]} {self.src} {self.dest}"
+		return f"op {unary_ops[self.op]} {self.dest} {self.src} 0"
 
 @dataclass
 class JumpCondition:
