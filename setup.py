@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
 setuptools.setup(
 	name="c2logic",
 	version="0.1",
-	descripton="Compiles C code to mindustry logic.",
+	descripton="Compiles C code to Mindustry logic.",
 	long_description=long_description,
 	long_description_content_type="text/markdown",
 	packages=["c2logic"],

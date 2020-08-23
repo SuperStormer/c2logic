@@ -1,14 +1,7 @@
 from pycparser.c_ast import Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
 from .instructions import BinaryOp, Enable, JumpCondition, Print, PrintFlush, Radar, RawAsm, RelativeJump, Sensor, Shoot, UnaryOp, Instruction, Set, Noop
-from pycparser import c_parser, c_ast, parse_file
+from pycparser import c_ast, parse_file
 from dataclasses import dataclass
-"""
-@dataclass
-class LoopState():
-	start: int
-	end: int
-	cond_jump_offset: int
-"""
 
 @dataclass
 class Function():
@@ -29,8 +22,6 @@ class Compiler(c_ast.NodeVisitor):
 	__rax: similar to x86 rax
 	__rbx: stores left hand side of binary ops to avoid clobbering by the right side
 	__retaddr: stores return address of func call
-	optimization levels:
-	1: assignments set directly to the variable instead of indirectly through __rax
 	"""
 	def __init__(self, opt_level=0):
 		self.opt_level = opt_level
@@ -148,6 +139,7 @@ class Compiler(c_ast.NodeVisitor):
 			varname = node.expr.name
 			self.push(Set("__rax", varname))
 			self.push(BinaryOp(varname, varname, "1", node.op[1]))
+		#TODO preincrement/predecrement
 		else:
 			self.visit(node.expr)
 			self.push(UnaryOp("__rax", "__rax", node.op))
@@ -157,8 +149,10 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
 		# jump over loop body when cond is false
-		if isinstance(self.peek(), BinaryOp):
-			self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
+		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
+			#TODO fix this
+			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+			#self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
 		else:
 			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 		self.cond_jump_offset = len(self.curr_function.instructions) - 1
@@ -174,8 +168,10 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = len(self.curr_function.instructions)
 		self.visit(node.cond)
 		# jump over loop body when cond is false
-		if isinstance(self.peek(), BinaryOp):
-			self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
+		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
+			#TODO fix this
+			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
+			#self.push(RelativeJump(None, JumpCondition.from_binaryop(self.pop())))
 		else:
 			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
@@ -189,10 +185,10 @@ class Compiler(c_ast.NodeVisitor):
 		self.visit(node.cond)
 		# jump over if body when cond is false
 		#TODO optimize for when cond is a binary operation
-		if isinstance(self.peek(), BinaryOp):
-			self.push(RelativeJump(None, JumpCondition("!=", "__rax", "0")))
+		if self.opt_level >= 1 and isinstance(self.peek(), BinaryOp):
+			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 		else:
-			self.push(RelativeJump(None, JumpCondition("!=", "__rax", "0")))
+			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 		cond_jump_offset = len(self.curr_function.instructions) - 1
 		self.visit(node.iftrue)
 		#jump over else body from end of if body
@@ -242,12 +238,12 @@ class Compiler(c_ast.NodeVisitor):
 					self.visit(arg)
 				self.set_to_rax(f"__radar_arg{i}")
 				args.append(f"__radar_arg{i}")
-			
-			for i, arg in reversed(list(enumerate(args))):
-				if self.can_avoid_indirection(arg):
-					args[i] = self.pop().src
-				else:
-					break
+			if self.opt_level >= 1:
+				for i, arg in reversed(list(enumerate(args))):
+					if self.can_avoid_indirection(arg):
+						args[i] = self.pop().src
+					else:
+						break
 			self.push(Radar("__rax", *args))  #pylint: disable=no-value-for-parameter
 		elif name == "sensor":
 			self.visit(node.args.exprs[0])
@@ -280,12 +276,12 @@ class Compiler(c_ast.NodeVisitor):
 				self.visit(arg)
 				self.set_to_rax(f"__shoot_arg{i}")
 				args.append(f"__shoot_arg{i}")
-			
-			for i, arg in reversed(list(enumerate(args))):
-				if self.can_avoid_indirection(arg):
-					args[i] = self.pop().src
-				else:
-					break
+			if self.opt_level >= 1:
+				for i, arg in reversed(list(enumerate(args))):
+					if self.can_avoid_indirection(arg):
+						args[i] = self.pop().src
+					else:
+						break
 			self.push(Shoot(*args))  #pylint: disable=no-value-for-parameter
 		
 		else:
