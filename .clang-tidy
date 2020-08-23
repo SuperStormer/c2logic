@@ -1,0 +1,7 @@
+Checks: "*,-abseil-*,-android*,-fuchsia-*,-readability-magic-numbers,-readability-redundant-declaration,\
+-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-avoid-magic-numbers,\
+-bugprone-exception-escape,-hicpp-explicit-conversions,-cert-dcl21-cpp,-modernize-use-trailing-return-type,\
+-google-readability-todo,-misc-non-private-member-variables-in-classes,-google-runtime-references,\
+-google-objc-function-naming,-cppcoreguidelines-pro-type-vararg,-hicpp-signed-bitwise,-modernize-use-using,\
+-modernize-redundant-void-arg"
+

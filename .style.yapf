@@ -1,0 +1,8 @@
+[style]
+based_on_style = facebook
+use_tabs = true
+column_limit = 100
+blank_lines_around_top_level_definition = 1
+blank_line_before_nested_class_or_def = false
+indent_blank_lines = true
+continuation_align_style = fixed

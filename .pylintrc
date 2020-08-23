@@ -1,0 +1,39 @@
+[MASTER]
+jobs=0
+[MESSAGES CONTROL]
+
+disable=missing-docstring,bad-continuation,trailing-whitespace,logging-not-lazy,logging-fstring-interpolation,no-else-return,no-else-raise
+enable=similarities
+[REPORTS]
+
+[REFACTORING]
+
+[BASIC]
+
+[FORMAT]
+max-line-length=130
+# e for error; f for file; fn for function
+good-names=i,j,k,x,y,e,f,fn
+indent-string="\t"
+# allows global variables to be normal
+const-rgx=[a-zA-Z_][a-zA-Z0-9_]{2,30}$
+[LOGGING]
+
+[MISCELLANEOUS]
+
+[SIMILARITIES]
+
+[SPELLING]
+
+[TYPECHECK]
+
+[VARIABLES]
+
+[CLASSES]
+
+[DESIGN]
+
+[IMPORTS]
+
+[EXCEPTIONS]
+

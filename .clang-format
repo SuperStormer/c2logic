@@ -1,0 +1,10 @@
+BasedOnStyle: Google
+UseTab: Always
+IndentWidth: 4 
+TabWidth: 4
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+ColumnLimit: 100
