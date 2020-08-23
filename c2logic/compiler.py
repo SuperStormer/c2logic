@@ -2,6 +2,7 @@ from pycparser.c_ast import Compound, Constant, DeclList, Enum, FileAST, FuncDec
 from .instructions import BinaryOp, Enable, End, JumpCondition, Print, PrintFlush, Radar, RawAsm, RelativeJump, Sensor, Shoot, UnaryOp, Instruction, Set, Noop
 from pycparser import c_ast, parse_file
 from dataclasses import dataclass
+from .operations import func_unary_ops, func_binary_ops
 
 @dataclass
 class Function():
@@ -243,27 +244,28 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
+		args = node.args.exprs
 		#TODO avoid duplication in psuedo-function calls
 		if name == "asm":
-			arg = node.args.exprs[0]
+			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to _asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
 		elif name in ("print", "printd"):
-			self.visit(node.args.exprs[0])
+			self.visit(args[0])
 			if self.can_avoid_indirection():
 				self.push(Print(self.pop().src))
 			else:
 				self.push(Print("__rax"))
 		elif name == "printflush":
-			self.visit(node.args.exprs[0])
+			self.visit(args[0])
 			if self.can_avoid_indirection():
 				self.push(PrintFlush(self.pop().src))
 			else:
 				self.push(PrintFlush("__rax"))
 		elif name == "radar":
 			args = []
-			for i, arg in enumerate(node.args.exprs):
+			for i, arg in enumerate(args):
 				if 1 <= i <= 4:
 					if not isinstance(arg, Constant) or arg.type != "string":
 						raise TypeError("Non-string argument to radar", node)
@@ -275,33 +277,33 @@ class Compiler(c_ast.NodeVisitor):
 			args = self.optimize_psuedofunc_args(args)
 			self.push(Radar("__rax", *args))  #pylint: disable=no-value-for-parameter
 		elif name == "sensor":
-			self.visit(node.args.exprs[0])
+			self.visit(args[0])
 			self.set_to_rax("__sensor_arg0")
-			arg = node.args.exprs[1]
+			arg = args[1]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to sensor", node)
 			self.push(Set("__rax", arg.value[1:-1]))
-			src = "__sensor_arg0"
-			prop = "__rax"
+			left = "__sensor_arg0"
+			right = "__rax"
 			if self.can_avoid_indirection():
-				prop = self.pop().src
+				right = self.pop().src
 			if self.can_avoid_indirection("__sensor_arg0"):
-				src = self.pop().src
-			self.push(Sensor("__rax", src, prop))
+				left = self.pop().src
+			self.push(Sensor("__rax", left, right))
 		elif name == "enable":
-			self.visit(node.args.exprs[0])
+			self.visit(args[0])
 			self.set_to_rax("__enable_arg0")
-			self.visit(node.args.exprs[1])
-			src = "__enable_arg0"
-			prop = "__rax"
+			self.visit(args[1])
+			left = "__enable_arg0"
+			right = "__rax"
 			if self.can_avoid_indirection():
-				prop = self.pop().src
+				right = self.pop().src
 			if self.can_avoid_indirection("__enable_arg0"):
-				src = self.pop().src
-			self.push(Enable(src, prop))
+				left = self.pop().src
+			self.push(Enable(left, right))
 		elif name == "shoot":
 			args = []
-			for i, arg in enumerate(node.args.exprs):
+			for i, arg in enumerate(args):
 				self.visit(arg)
 				self.set_to_rax(f"__shoot_arg{i}")
 				args.append(f"__shoot_arg{i}")
@@ -309,6 +311,23 @@ class Compiler(c_ast.NodeVisitor):
 			self.push(Shoot(*args))  #pylint: disable=no-value-for-parameter
 		elif name == "end":
 			self.push(End())
+		elif name in func_binary_ops:
+			self.visit(args[0])
+			self.set_to_rax("__binary_arg0")
+			self.visit(args[1])
+			left = "__binary_arg0"
+			right = "__rax"
+			if self.can_avoid_indirection():
+				right = self.pop().src
+			if self.can_avoid_indirection("__binary_arg0"):
+				left = self.pop().src
+			self.push(BinaryOp("__rax", left, right, name))
+		elif name in func_unary_ops:
+			self.visit(args[0])
+			if self.can_avoid_indirection():
+				self.push(UnaryOp("__rax", self.pop().src, name))
+			else:
+				self.push(UnaryOp("__rax", "__rax", name))
 		else:
 			raise NotImplementedError(node)
 	

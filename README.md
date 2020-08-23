@@ -19,11 +19,8 @@ See `include/mindustry.h` for API definitions.
 -   drawing
 -   getlink
 -   memory cell read/write
--   do-while
--   continue
--   goto
 -   actual functions
 -   structs
 -   enums
 
-Some of these features may be worked around using `_asm()`.
+Some of these features may be worked around using `asm()`.
