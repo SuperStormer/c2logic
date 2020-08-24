@@ -1,4 +1,5 @@
--I ./include
+-I/home/larry/.local/include/python3.8/
 -Wall
 -Wextra
 -Wno-main-return-type
+-Wno-incompatible-library-redeclaration

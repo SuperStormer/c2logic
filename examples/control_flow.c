@@ -1,4 +1,4 @@
-#include "../include/mindustry.h"
+#include "c2logic/builtins.h"
 /*expected output:
 5678
 0246
