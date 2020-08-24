@@ -6,6 +6,6 @@ void main(void) {
 	print("\n");
 	printd(y);
 	print("\n");
-	print(max(x, y) < 10);
+	printd(max(x, y) < 10);
 	printflush(message1);
 }

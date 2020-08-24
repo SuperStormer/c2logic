@@ -248,12 +248,12 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_UnaryOp(self, node):
 		if node.op == "p++" or node.op == "p--":  #postincrement/decrement
-			varname = node.expr.name
+			varname = self.get_varname(node.expr.name)
 			if self.opt_level < 2:
 				self.push(Set("__rax", varname))
 			self.push(BinaryOp(varname, varname, "1", node.op[1]))
 		elif node.op == "++" or node.op == "--":
-			varname = node.expr.name
+			varname = self.get_varname(node.expr.name)
 			self.push(BinaryOp(varname, varname, "1", node.op[0]))
 			if self.opt_level < 2:
 				self.push(Set("__rax", varname))
@@ -418,7 +418,7 @@ class Compiler(c_ast.NodeVisitor):
 				raise ValueError(f"{name} is not a function")
 			for param, arg in zip(func.params, args):
 				self.visit(arg)
-				self.set_to_rax(f"{param}_{name}")
+				self.set_to_rax(f"_{param}_{name}")
 			self.push(Set("__retaddr_" + name, self.curr_offset() + 3))
 			self.push(FunctionCall(name))
 	

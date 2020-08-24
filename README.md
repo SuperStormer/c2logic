@@ -15,7 +15,7 @@ Run the command line tool using:
 where `filename` is a string and `optimization_level` is an optional integer
 Optimization Level:
 
-0. completely unoptimized
+0. completely unoptimized.
 1. the default
     - modify variables without using a temporary
 2. turns on some potentially unsafe optimizations
@@ -28,7 +28,7 @@ Special Variables:
 
 -   \_\_rax: similar to x86 rax
 -   \_\_rbx: stores left hand side of binary ops to avoid clobbering by the right side
--   \__retaddr_\*: stores return address of func call
+-   \_\_retaddr\_\*: stores return address of func call
 
 When developing your script, you can include `c2logic/builtins.h` located in the python include directory(location depends on system, mine is at `~/.local/include/python3.8/`)
 
@@ -43,7 +43,6 @@ See `include/builtins.h` for API definitions.
 -   drawing
 -   getlink
 -   memory cell read/write
--   actual functions
 -   structs
 -   enums
 
