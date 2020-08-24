@@ -1,13 +1,20 @@
-from pycparser.c_ast import Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
-from .instructions import BinaryOp, Enable, End, JumpCondition, Print, PrintFlush, Radar, RawAsm, RelativeJump, Sensor, Shoot, UnaryOp, Instruction, Set, Noop
-from pycparser import c_ast, parse_file
 from dataclasses import dataclass
-from .operations import func_unary_ops, func_binary_ops
+
+from pycparser import c_ast, parse_file
+from pycparser.c_ast import (
+	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
+)
+
+from .consts import builtins, func_binary_ops, func_unary_ops
+from .instructions import (
+	BinaryOp, Enable, End, FunctionCall, Instruction, JumpCondition, Print, PrintFlush, Radar,
+	RawAsm, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp
+)
 
 @dataclass
 class Function():
 	name: str
-	args: list
+	params: list
 	instructions: list
 	start: int
 
@@ -40,20 +47,29 @@ class Compiler(c_ast.NodeVisitor):
 		ast = parse_file(filename, use_cpp=True, cpp_args=["-I", "include/"])
 		self.visit(ast)
 		#TODO actually handle functions properly
-		out = []
-		offset = 0
+		init_call = FunctionCall("main")
+		preamble = [Set("__retaddr", "2"), init_call, End()]
+		
+		offset = len(preamble)
+		#set function starts
 		for function in self.functions.values():
 			function.start = offset
 			offset += len(function.instructions)
+		
+		#rewrite relative jumps and func calls
+		init_call.func_start = self.functions["main"].start
 		for function in self.functions.values():
 			instructions = function.instructions
-			out2 = []
 			for instruction in instructions:
 				if isinstance(instruction, RelativeJump):
 					instruction.func_start = function.start
-				out2.append(str(instruction))
-			out.append("\n".join(out2))
-		return "\n\n".join(out)
+				if isinstance(instruction, FunctionCall):
+					instruction.func_start = self.functions[instruction.func_name].start
+		out = ["\n".join(map(str, preamble))]
+		out.extend(
+			"\n".join(map(str, function.instructions)) for function in self.functions.values()
+		)
+		return "\n".join(out)
 	
 	#utilities
 	def push(self, instruction: Instruction):
@@ -64,6 +80,9 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def peek(self):
 		return self.curr_function.instructions[-1]
+	
+	def curr_offset(self):
+		return len(self.curr_function.instructions) - 1
 	
 	def can_avoid_indirection(self, var="__rax"):
 		top = self.peek()
@@ -90,17 +109,23 @@ class Compiler(c_ast.NodeVisitor):
 			self.push(RelativeJump(None, JumpCondition("==", "__rax", "0")))
 	
 	def start_loop(self, cond):
-		self.loop_start = len(self.curr_function.instructions)
+		self.loop_start = self.curr_offset() + 1
 		self.visit(cond)
 		self.push_body_jump()
-		self.loop_end_jumps = [len(self.curr_function.instructions) - 1]  # also used for breaks
+		self.loop_end_jumps = [self.curr_offset()]  # also used for breaks
 	
 	def end_loop(self):
 		self.push(RelativeJump(self.loop_start, JumpCondition.always))
 		for offset in self.loop_end_jumps:
-			self.curr_function.instructions[offset].offset = len(self.curr_function.instructions)
+			self.curr_function.instructions[offset].offset = self.curr_offset() + 1
 		self.loop_start = None
 		self.loop_end_jumps = None
+	
+	def push_ret(self):
+		if self.curr_function.name == "main":
+			self.push(End())
+		else:
+			self.push(Return())
 	
 	def optimize_psuedofunc_args(self, args):
 		if self.opt_level >= 1:
@@ -115,23 +140,28 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_FuncDef(self, node):  # function definitions
 		func_name = node.decl.name
 		func_decl = node.decl.type
-		args = [arg_decl.name for arg_decl in func_decl.args.params]
+		params = [param_decl.name for param_decl in func_decl.args.params]
 		
-		self.curr_function = Function(func_name, args, [], None)
+		self.curr_function = Function(func_name, params, [], None)
 		self.visit(node.body)
-		#in case for loop is the last thing in a function to ensure the jump target is valid
-		if self.loop_start is not None:
-			self.push(Noop())
+		#implicit return
+		#needed unconditionally in case loop/if body is at end of function
+		self.push(Set("__rax", "null"))
+		self.push(Return())
 		self.functions[func_name] = self.curr_function
 	
 	def visit_Decl(self, node):
 		if isinstance(node.type, TypeDecl):  # variable declaration
+			#TODO fix local/global split
 			if node.init is not None:
 				self.visit(node.init)
 				self.set_to_rax(node.name)
 		elif isinstance(node.type, FuncDecl):
-			#TODO actually process func declarations
-			pass
+			if node.name not in builtins + func_unary_ops + func_binary_ops:
+				#create placeholder function for forward declarations
+				self.functions[node.name] = Function(
+					node.name, [param_decl.name for param_decl in node.type.args.params], [], None
+				)
 		elif isinstance(node.type, Struct):
 			if node.type.name != "MindustryObject":
 				#TODO structs
@@ -209,7 +239,7 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_DoWhile(self, node):
 		#jump over the condition on the first iterattion
 		self.push(RelativeJump(None, JumpCondition.always))
-		init_jump_offset = len(self.curr_function.instructions) - 1
+		init_jump_offset = self.curr_offset()
 		self.start_loop(node.cond)
 		self.curr_function.instructions[init_jump_offset].offset = len(
 			self.curr_function.instructions
@@ -220,12 +250,12 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_If(self, node):
 		self.visit(node.cond)
 		self.push_body_jump()
-		cond_jump_offset = len(self.curr_function.instructions) - 1
+		cond_jump_offset = self.curr_offset()
 		self.visit(node.iftrue)
 		#jump over else body from end of if body
 		if node.iffalse is not None:
 			self.push(RelativeJump(None, JumpCondition.always))
-			cond_jump_offset2 = len(self.curr_function.instructions) - 1
+			cond_jump_offset2 = self.curr_offset()
 		self.curr_function.instructions[cond_jump_offset].offset = len(
 			self.curr_function.instructions
 		)
@@ -237,10 +267,14 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_Break(self, node):
 		self.push(RelativeJump(None, JumpCondition.always))
-		self.loop_end_jumps.append(len(self.curr_function.instructions) - 1)
+		self.loop_end_jumps.append(self.curr_offset())
 	
 	def visit_Continue(self, node):
 		self.push(RelativeJump(self.loop_start, JumpCondition.always))
+	
+	def visit_Return(self, node):
+		self.visit(node.expr)
+		self.push(Return())
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
@@ -249,7 +283,7 @@ class Compiler(c_ast.NodeVisitor):
 		if name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
-				raise TypeError("Non-string argument to _asm", node)
+				raise TypeError("Non-string argument to asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
 		elif name in ("print", "printd"):
 			self.visit(args[0])
@@ -329,7 +363,15 @@ class Compiler(c_ast.NodeVisitor):
 			else:
 				self.push(UnaryOp("__rax", "__rax", name))
 		else:
-			raise NotImplementedError(node)
+			try:
+				func = self.functions[name]
+			except KeyError:
+				raise ValueError(f"{name} is not a function")
+			for param, arg in zip(func.params, args):
+				self.visit(arg)
+				self.set_to_rax(param)
+			self.push(Set("__retaddr", self.curr_offset() + 2))
+			self.push(FunctionCall(name))
 	
 	def generic_visit(self, node):
 		if isinstance(node, (FileAST, Compound, DeclList)):

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .operations import binary_op_inverses, binary_ops, condition_ops, unary_ops
+from .consts import binary_op_inverses, binary_ops, condition_ops, unary_ops
 
 class Instruction:
 	pass
@@ -9,7 +9,7 @@ class Noop(Instruction):
 		return "noop"
 
 class Set(Instruction):
-	def __init__(self, dest, src):
+	def __init__(self, dest: str, src: str):
 		self.src = src
 		self.dest = dest
 	
@@ -17,7 +17,7 @@ class Set(Instruction):
 		return f"set {self.dest} {self.src}"
 
 class BinaryOp(Instruction):
-	def __init__(self, dest, left, right, op):
+	def __init__(self, dest: str, left: str, right: str, op: str):
 		self.left = left
 		self.right = right
 		self.op = op
@@ -30,7 +30,7 @@ class BinaryOp(Instruction):
 		return f"op {binary_ops[self.op]} {self.dest} {self.left} {self.right}"
 
 class UnaryOp(Instruction):
-	def __init__(self, dest, src, op):
+	def __init__(self, dest: str, src: str, op: str):
 		self.src = src
 		self.dest = dest
 		self.op = op
@@ -62,22 +62,36 @@ class RelativeJump(Instruction):
 	def __str__(self):
 		return f"jump {self.func_start+self.offset} {self.cond}"
 
+class FunctionCall(Instruction):
+	def __init__(self, func_name: str):
+		self.func_name = func_name
+		self.func_start: int = None
+	
+	def __str__(self):
+		return f"jump {self.func_start} {JumpCondition.always}"
+
+class Return(Instruction):
+	def __str__(self):
+		return "set @counter __retaddr"
+
 class Print(Instruction):
-	def __init__(self, val):
+	def __init__(self, val: str):
 		self.val = val
 	
 	def __str__(self):
 		return f"print {self.val}"
 
 class PrintFlush(Instruction):
-	def __init__(self, val):
+	def __init__(self, val: str):
 		self.val = val
 	
 	def __str__(self):
 		return f"printflush {self.val}"
 
 class Radar(Instruction):
-	def __init__(self, dest, src, target1, target2, target3, sort, index):
+	def __init__(
+		self, dest: str, src: str, target1: str, target2: str, target3: str, sort: str, index: str
+	):
 		self.src = src
 		self.dest = dest
 		self.target1 = target1
@@ -90,7 +104,7 @@ class Radar(Instruction):
 		return f"radar {self.target1} {self.target2} {self.target3} {self.sort} {self.src} {self.index} {self.dest}"
 
 class Sensor(Instruction):
-	def __init__(self, dest, src, prop):
+	def __init__(self, dest: str, src: str, prop: str):
 		self.dest = dest
 		self.src = src
 		self.prop = prop
@@ -99,7 +113,7 @@ class Sensor(Instruction):
 		return f"sensor {self.dest} {self.src} @{self.prop}"
 
 class Enable(Instruction):
-	def __init__(self, obj, enabled):
+	def __init__(self, obj: str, enabled: str):
 		self.obj = obj
 		self.enabled = enabled
 	
@@ -107,7 +121,7 @@ class Enable(Instruction):
 		return f"control enabled {self.obj} {self.enabled} 0 0 0"
 
 class Shoot(Instruction):
-	def __init__(self, obj, x, y, shoot):
+	def __init__(self, obj: str, x: str, y: str, shoot: str):
 		self.obj = obj
 		self.x = x
 		self.y = y
