@@ -48,6 +48,8 @@ class JumpCondition:
 	def from_binaryop(cls, binop: BinaryOp):
 		return cls(binop.op, binop.left, binop.right)
 	
+	always: "JumpCondition" = None
+	
 	def __str__(self):
 		return f"{condition_ops[self.op]} {self.left} {self.right}"
 
