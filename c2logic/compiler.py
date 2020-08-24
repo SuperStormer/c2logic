@@ -1,3 +1,4 @@
+import site
 from dataclasses import dataclass
 
 from pycparser import c_ast, parse_file
@@ -44,11 +45,13 @@ class Compiler(c_ast.NodeVisitor):
 		self.curr_function = None
 		self.loop_start = None
 		self.cond_jump_offset = None
-		ast = parse_file(filename, use_cpp=True, cpp_args=["-I", "include/"])
+		ast = parse_file(
+			filename, use_cpp=True, cpp_args=["-I", site.getuserbase() + "/include/python3.8"]
+		)
 		self.visit(ast)
 		#TODO actually handle functions properly
 		init_call = FunctionCall("main")
-		preamble = [Set("__retaddr", "2"), init_call, End()]
+		preamble = [Set("__retaddr_main", "2"), init_call, End()]
 		
 		offset = len(preamble)
 		#set function starts
@@ -63,8 +66,10 @@ class Compiler(c_ast.NodeVisitor):
 			for instruction in instructions:
 				if isinstance(instruction, RelativeJump):
 					instruction.func_start = function.start
-				if isinstance(instruction, FunctionCall):
+				elif isinstance(instruction, FunctionCall):
 					instruction.func_start = self.functions[instruction.func_name].start
+				elif isinstance(instruction, Set) and instruction.dest.startswith("__retaddr"):
+					instruction.src += function.start
 		out = ["\n".join(map(str, preamble))]
 		out.extend(
 			"\n".join(map(str, function.instructions)) for function in self.functions.values()
@@ -121,12 +126,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.loop_start = None
 		self.loop_end_jumps = None
 	
-	def push_ret(self):
-		if self.curr_function.name == "main":
-			self.push(End())
-		else:
-			self.push(Return())
-	
 	def optimize_psuedofunc_args(self, args):
 		if self.opt_level >= 1:
 			for i, arg in reversed(list(enumerate(args))):
@@ -147,7 +146,7 @@ class Compiler(c_ast.NodeVisitor):
 		#implicit return
 		#needed unconditionally in case loop/if body is at end of function
 		self.push(Set("__rax", "null"))
-		self.push(Return())
+		self.push(Return(self.curr_function.name))
 		self.functions[func_name] = self.curr_function
 	
 	def visit_Decl(self, node):
@@ -274,11 +273,14 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_Return(self, node):
 		self.visit(node.expr)
-		self.push(Return())
+		self.push(Return(self.curr_function.name))
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name
-		args = node.args.exprs
+		if node.args is not None:
+			args = node.args.exprs
+		else:
+			args = []
 		#TODO avoid duplication in psuedo-function calls
 		if name == "asm":
 			arg = args[0]
@@ -370,7 +372,7 @@ class Compiler(c_ast.NodeVisitor):
 			for param, arg in zip(func.params, args):
 				self.visit(arg)
 				self.set_to_rax(param)
-			self.push(Set("__retaddr", self.curr_offset() + 2))
+			self.push(Set("__retaddr_" + name, self.curr_offset() + 3))
 			self.push(FunctionCall(name))
 	
 	def generic_visit(self, node):

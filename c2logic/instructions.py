@@ -71,8 +71,11 @@ class FunctionCall(Instruction):
 		return f"jump {self.func_start} {JumpCondition.always}"
 
 class Return(Instruction):
+	def __init__(self, func_name: str):
+		self.func_name = func_name
+	
 	def __str__(self):
-		return "set @counter __retaddr"
+		return f"set @counter __retaddr_{self.func_name}"
 
 class Print(Instruction):
 	def __init__(self, val: str):
