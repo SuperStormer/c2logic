@@ -36,4 +36,13 @@ func_unary_ops = ["abs", "log", "log10", "sin", "cos", "tan", "floor", "ceil", "
 binary_ops.update(dict(zip(func_binary_ops, func_binary_ops)))
 unary_ops.update(dict(zip(func_unary_ops, func_unary_ops)))
 
-builtins = ["print", "printd", "printflush", "radar", "sensor", "enable", "shoot", "end"]
+draw_funcs = {
+	"draw" + func.lower(): func
+	for func in
+	["clear", "color", "stroke", "line", "rect", "lineRect", "poly", "linePoly", "triangle"]
+}
+
+builtins = [
+	"print", "printd", "printflush", "radar", "sensor", "enable", "shoot", "get_link", "read",
+	"write", "drawflush", "end"
+] + list(draw_funcs.keys())

@@ -7,10 +7,10 @@ from pycparser.c_ast import (
 	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
 )
 
-from .consts import builtins, func_binary_ops, func_unary_ops
+from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
 from .instructions import (
-	BinaryOp, Enable, End, FunctionCall, Instruction, JumpCondition, Print, PrintFlush, Radar,
-	RawAsm, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp
+	BinaryOp, Draw, DrawFlush, Enable, End, FunctionCall, GetLink, Instruction, JumpCondition,
+	Print, PrintFlush, Radar, RawAsm, Read, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp, Write
 )
 
 @dataclass
@@ -46,8 +46,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.curr_function: Function = None
 		self.globals: list = None
 		self.loops: list = None
-		#self.loop_start: int = None
-		#self.loop_end_jumps: list = None
 		self.loop_end: int = None
 	
 	def compile(self, filename: str):
@@ -55,8 +53,6 @@ class Compiler(c_ast.NodeVisitor):
 		self.curr_function = None
 		self.globals = []
 		self.loops = []
-		#self.loop_start = None
-		#self.loop_end_jumps = None
 		self.loop_end = None
 		ast = parse_file(
 			filename, use_cpp=True, cpp_args=["-I", site.getuserbase() + "/include/python3.8"]
@@ -122,8 +118,6 @@ class Compiler(c_ast.NodeVisitor):
 		if self.opt_level >= 1 and hasattr(top, "dest") and top.dest == "__rax":
 			#avoid indirection through __rax
 			self.curr_function.instructions[-1].dest = varname
-			
-			#self.push(Set(varname, self.pop().src))
 		else:
 			self.push(Set(varname, "__rax"))
 	
@@ -167,6 +161,34 @@ class Compiler(c_ast.NodeVisitor):
 				else:
 					break
 		return args
+	
+	def get_unary_builtin_arg(self, args):
+		self.visit(args[0])
+		if self.can_avoid_indirection():
+			return self.pop().src
+		else:
+			return "__rax"
+	
+	def get_binary_builtin_args(self, args, name):
+		left_name = f"__{name}_arg0"
+		self.visit(args[0])
+		self.set_to_rax(left_name)
+		self.visit(args[1])
+		left = left_name
+		right = "__rax"
+		if self.can_avoid_indirection():
+			right = self.pop().src
+		if self.can_avoid_indirection(left_name):
+			left = self.pop().src
+		return left, right
+	
+	def get_multiple_psuedofunc_args(self, args):
+		argnames = []
+		for i, arg in enumerate(args):
+			self.visit(arg)
+			self.set_to_rax(f"__write_arg{i}")
+			argnames.append(f"__write_arg{i}")
+		return self.optimize_psuedofunc_args(argnames)
 	
 	#visitors
 	def visit_FuncDef(self, node):  # function definitions
@@ -311,11 +333,11 @@ class Compiler(c_ast.NodeVisitor):
 				self.curr_function.instructions
 			)
 	
-	def visit_Break(self, node):
+	def visit_Break(self, node):  #pylint: disable=unused-argument
 		self.push(RelativeJump(None, JumpCondition.always))
 		self.loops[-1].end_jumps.append(self.curr_offset())
 	
-	def visit_Continue(self, node):
+	def visit_Continue(self, node):  #pylint: disable=unused-argument
 		self.push(RelativeJump(self.loops[-1].start, JumpCondition.always))
 	
 	def visit_Return(self, node):
@@ -328,26 +350,18 @@ class Compiler(c_ast.NodeVisitor):
 			args = node.args.exprs
 		else:
 			args = []
-		#TODO avoid duplication in psuedo-function calls
+		#TODO avoid duplication in builtin calls
 		if name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
 		elif name in ("print", "printd"):
-			self.visit(args[0])
-			if self.can_avoid_indirection():
-				self.push(Print(self.pop().src))
-			else:
-				self.push(Print("__rax"))
+			self.push(Print(self.get_unary_builtin_arg(args)))
 		elif name == "printflush":
-			self.visit(args[0])
-			if self.can_avoid_indirection():
-				self.push(PrintFlush(self.pop().src))
-			else:
-				self.push(PrintFlush("__rax"))
+			self.push(PrintFlush(self.get_unary_builtin_arg(args)))
 		elif name == "radar":
-			args = []
+			argnames = []
 			for i, arg in enumerate(args):
 				if 1 <= i <= 4:
 					if not isinstance(arg, Constant) or arg.type != "string":
@@ -356,9 +370,9 @@ class Compiler(c_ast.NodeVisitor):
 				else:
 					self.visit(arg)
 				self.set_to_rax(f"__radar_arg{i}")
-				args.append(f"__radar_arg{i}")
-			args = self.optimize_psuedofunc_args(args)
-			self.push(Radar("__rax", *args))  #pylint: disable=no-value-for-parameter
+				argnames.append(f"__radar_arg{i}")
+			argnames = self.optimize_psuedofunc_args(argnames)
+			self.push(Radar("__rax", *argnames))  #pylint: disable=no-value-for-parameter
 		elif name == "sensor":
 			self.visit(args[0])
 			self.set_to_rax("__sensor_arg0")
@@ -374,36 +388,31 @@ class Compiler(c_ast.NodeVisitor):
 				left = self.pop().src
 			self.push(Sensor("__rax", left, right))
 		elif name == "enable":
-			self.visit(args[0])
-			self.set_to_rax("__enable_arg0")
-			self.visit(args[1])
-			left = "__enable_arg0"
-			right = "__rax"
-			if self.can_avoid_indirection():
-				right = self.pop().src
-			if self.can_avoid_indirection("__enable_arg0"):
-				left = self.pop().src
+			left, right = self.get_binary_builtin_args(args, "enable")
 			self.push(Enable(left, right))
 		elif name == "shoot":
-			args = []
-			for i, arg in enumerate(args):
-				self.visit(arg)
-				self.set_to_rax(f"__shoot_arg{i}")
-				args.append(f"__shoot_arg{i}")
-			args = self.optimize_psuedofunc_args(args)
-			self.push(Shoot(*args))  #pylint: disable=no-value-for-parameter
+			self.push(Shoot(*self.get_multiple_psuedofunc_args(args)))  #pylint: disable=no-value-for-parameter
+		elif name == "get_link":
+			self.visit(args[0])
+			if self.can_avoid_indirection():
+				self.push(GetLink("__rax", self.pop().src))
+			else:
+				self.push(GetLink("__rax", "__rax"))
+		elif name == "read":
+			cell, index = self.get_binary_builtin_args(args, "read")
+			self.push(Read("__rax", cell, index))
+		elif name == "write":
+			self.push(Write(*self.get_multiple_psuedofunc_args(args)))  #pylint: disable=no-value-for-parameter
 		elif name == "end":
 			self.push(End())
+		elif name in draw_funcs:
+			argnames = self.get_multiple_psuedofunc_args(args)
+			cmd = draw_funcs[name]
+			self.push(Draw(cmd, *argnames))
+		elif name == "drawflush":
+			self.push(DrawFlush(self.get_unary_builtin_arg(args)))
 		elif name in func_binary_ops:
-			self.visit(args[0])
-			self.set_to_rax("__binary_arg0")
-			self.visit(args[1])
-			left = "__binary_arg0"
-			right = "__rax"
-			if self.can_avoid_indirection():
-				right = self.pop().src
-			if self.can_avoid_indirection("__binary_arg0"):
-				left = self.pop().src
+			left, right = self.get_binary_builtin_args(args, "binary")
 			self.push(BinaryOp("__rax", left, right, name))
 		elif name in func_unary_ops:
 			self.visit(args[0])
