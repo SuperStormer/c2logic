@@ -58,7 +58,7 @@ class Compiler(c_ast.NodeVisitor):
 		ast = parse_file(
 			filename,
 			use_cpp=True,
-			cpp_args=["-I", sysconfig.get_path("include", f"{os.name}_user")]
+			cpp_args=["-I", get_include_path()]
 		)
 		self.visit(ast)
 		
@@ -430,6 +430,14 @@ class Compiler(c_ast.NodeVisitor):
 			super().generic_visit(node)
 		else:
 			raise NotImplementedError(node)
+
+def get_include_path():
+	if os.name == "posix":
+		return sysconfig.get_path("include", "posix_user")
+	elif os.name == "nt":
+		return sysconfig.get_path("include", "nt")
+	else:
+		raise ValueError(f"Unknown os {os.name}")
 
 def main():
 	import argparse
