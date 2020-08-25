@@ -39,7 +39,7 @@ See [include/builtins.h](./include/builtins.h) for API definitions and [examples
 # Supported Features
 
 -   all Mindustry instructions as of BE 9420
--   all C control flow structures except goto
+-   all C control flow structures except goto and switch
 -   functions
 -   local/global variables
 
@@ -50,4 +50,5 @@ See [include/builtins.h](./include/builtins.h) for API definitions and [examples
 -   block scoped variables - just use locals
 -   typedefs - use macros
 -   pointers - don't use them
+-   switch - use if-else chains
 -   goto - don't use it
