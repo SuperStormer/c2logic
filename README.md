@@ -1,6 +1,6 @@
 # c2logic
 
-Compiles C code to Mindustry logic. Still in beta, so compiled output may not be fully optimized.
+Compiles C code to Mindustry logic. Still in beta, so compiled output may not be fully optimized. Requirements are the `pycparser` package and the C preprocessor (`cpp`).
 
 # Installation
 
@@ -31,7 +31,7 @@ Special Variables:
 -   `__rbx`: stores left hand side of binary ops to avoid clobbering by the right side
 -   `__retaddr__<func_name>`: stores return address of func call
 
-When writing your code, you must include `c2logic/builtins.h`, which is located in the python include directory (location depends on system, mine is at `~/.local/include/python3.8/`).
+When writing your code, you must include `c2logic/builtins.h`, which is located in the python include directory (location depends on system, mine is at `~/.local/include/python3.8/`). A quick way to find this is `python3 -c 'import sysconfig, os; print(sysconfig.get_path("include",f"{os.name}_user"))'`.
 
 See [include/builtins.h](./include/builtins.h) for API definitions and [examples](./examples) for API sample usage.
 

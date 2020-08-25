@@ -1,4 +1,5 @@
-import site
+import os
+import sysconfig
 import dataclasses
 from dataclasses import dataclass
 
@@ -55,7 +56,9 @@ class Compiler(c_ast.NodeVisitor):
 		self.loops = []
 		self.loop_end = None
 		ast = parse_file(
-			filename, use_cpp=True, cpp_args=["-I", site.getuserbase() + "/include/python3.8"]
+			filename,
+			use_cpp=True,
+			cpp_args=["-I", sysconfig.get_path("include", f"{os.name}_user")]
 		)
 		self.visit(ast)
 		
@@ -182,12 +185,12 @@ class Compiler(c_ast.NodeVisitor):
 			left = self.pop().src
 		return left, right
 	
-	def get_multiple_psuedofunc_args(self, args):
+	def get_multiple_builtin_args(self, args, name):
 		argnames = []
 		for i, arg in enumerate(args):
 			self.visit(arg)
-			self.set_to_rax(f"__write_arg{i}")
-			argnames.append(f"__write_arg{i}")
+			self.set_to_rax(f"__{name}_arg{i}")
+			argnames.append(f"__{name}_arg{i}")
 		return self.optimize_psuedofunc_args(argnames)
 	
 	#visitors
@@ -351,15 +354,24 @@ class Compiler(c_ast.NodeVisitor):
 		else:
 			args = []
 		#TODO avoid duplication in builtin calls
-		if name == "asm":
+		builtins_dict = {
+			"print": Print,
+			"printd": Print,
+			"printflush": PrintFlush,
+			"enable": Enable,
+			"shoot": Shoot,
+			"get_link": GetLink,
+			"read": lambda cell, index: Read("__rax", cell, index),
+			"write": Write,
+			"drawflush": DrawFlush
+		}
+		if name in builtins_dict:
+			self.push(builtins_dict[name](*self.get_multiple_builtin_args(args, name)))
+		elif name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
-		elif name in ("print", "printd"):
-			self.push(Print(self.get_unary_builtin_arg(args)))
-		elif name == "printflush":
-			self.push(PrintFlush(self.get_unary_builtin_arg(args)))
 		elif name == "radar":
 			argnames = []
 			for i, arg in enumerate(args):
@@ -387,30 +399,12 @@ class Compiler(c_ast.NodeVisitor):
 			if self.can_avoid_indirection("__sensor_arg0"):
 				left = self.pop().src
 			self.push(Sensor("__rax", left, right))
-		elif name == "enable":
-			left, right = self.get_binary_builtin_args(args, "enable")
-			self.push(Enable(left, right))
-		elif name == "shoot":
-			self.push(Shoot(*self.get_multiple_psuedofunc_args(args)))  #pylint: disable=no-value-for-parameter
-		elif name == "get_link":
-			self.visit(args[0])
-			if self.can_avoid_indirection():
-				self.push(GetLink("__rax", self.pop().src))
-			else:
-				self.push(GetLink("__rax", "__rax"))
-		elif name == "read":
-			cell, index = self.get_binary_builtin_args(args, "read")
-			self.push(Read("__rax", cell, index))
-		elif name == "write":
-			self.push(Write(*self.get_multiple_psuedofunc_args(args)))  #pylint: disable=no-value-for-parameter
 		elif name == "end":
 			self.push(End())
 		elif name in draw_funcs:
-			argnames = self.get_multiple_psuedofunc_args(args)
+			argnames = self.get_multiple_builtin_args(args, name)
 			cmd = draw_funcs[name]
 			self.push(Draw(cmd, *argnames))
-		elif name == "drawflush":
-			self.push(DrawFlush(self.get_unary_builtin_arg(args)))
 		elif name in func_binary_ops:
 			left, right = self.get_binary_builtin_args(args, "binary")
 			self.push(BinaryOp("__rax", left, right, name))
