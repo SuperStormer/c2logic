@@ -38,8 +38,8 @@ See [include/builtins.h](./include/builtins.h) for API definitions and [examples
 
 # Supported Features
 
--   all Mindustry instructions as of BE
--   all control flow structures except goto
+-   all Mindustry instructions as of BE 9420
+-   all C control flow structures except goto
 -   functions
 -   local/global variables
 
