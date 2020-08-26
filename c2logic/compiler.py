@@ -24,6 +24,7 @@ class Function():
 	start: int = dataclasses.field(default=None, init=False)
 	callees: set = dataclasses.field(init=False, default_factory=set)
 	callers: set = dataclasses.field(init=False, default_factory=set)
+	labels: list = dataclasses.field(init=False, default_factory=list)
 	
 	def __post_init__(self):
 		self.locals = self.params[:]
@@ -284,6 +285,8 @@ class Compiler(c_ast.NodeVisitor):
 		varname = node.name
 		if varname not in self.functions:
 			varname = self.get_varname(varname)
+		if varname in ("links", "ipt", "counter", "time"):
+			varname = "@" + varname
 		self.push(Set("__rax", varname))
 	
 	def visit_BinaryOp(self, node):
