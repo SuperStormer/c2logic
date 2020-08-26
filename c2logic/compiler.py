@@ -10,7 +10,7 @@ from pycparser.c_ast import (
 
 from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
 from .instructions import (
-	BinaryOp, Draw, DrawFlush, Enable, End, FunctionCall, GetLink, Instruction, JumpCondition,
+	BinaryOp, Draw, DrawFlush, Enable, End, FunctionCall, GetLink, Goto, Instruction, JumpCondition,
 	Print, PrintFlush, Radar, RawAsm, Read, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp, Write
 )
 
@@ -24,7 +24,7 @@ class Function():
 	start: int = dataclasses.field(default=None, init=False)
 	callees: set = dataclasses.field(init=False, default_factory=set)
 	callers: set = dataclasses.field(init=False, default_factory=set)
-	labels: list = dataclasses.field(init=False, default_factory=list)
+	labels: dict = dataclasses.field(init=False, default_factory=dict)
 	
 	def __post_init__(self):
 		self.locals = self.params[:]
@@ -65,7 +65,10 @@ class Compiler(c_ast.NodeVisitor):
 			self.remove_uncalled_funcs()
 		init_call = FunctionCall("main")
 		if self.opt_level >= 3:
-			preamble = [init_call]
+			if len(self.functions) == 1:
+				preamble = []
+			else:
+				preamble = [init_call]
 		else:
 			preamble = [Set("__retaddr_main", "2"), init_call, End()]
 		
@@ -85,9 +88,14 @@ class Compiler(c_ast.NodeVisitor):
 					instruction.func_start = function.start
 				elif isinstance(instruction, FunctionCall):
 					instruction.func_start = self.functions[instruction.func_name].start
+				elif isinstance(instruction, Goto):
+					instruction.offset = function.labels[instruction.label]
+					instruction.func_start = function.start
 				elif isinstance(instruction, Set) and instruction.dest.startswith("__retaddr"):
 					instruction.src += function.start
-		out = ["\n".join(map(str, preamble))]
+		out = []
+		if preamble:
+			out.append("\n".join(map(str, preamble)))
 		out.extend(
 			"\n".join(map(str, function.instructions)) for function in self.functions.values()
 		)
@@ -96,7 +104,6 @@ class Compiler(c_ast.NodeVisitor):
 	def remove_uncalled_funcs(self):
 		to_remove = set()
 		for name, function in list(self.functions.items()):
-			print(function)
 			if name in to_remove:
 				continue
 			callers = set()
@@ -225,7 +232,6 @@ class Compiler(c_ast.NodeVisitor):
 			self.curr_function = self.functions[func_name]
 		else:
 			func_decl = node.decl.type
-			print(func_decl)
 			params = [param_decl.name for param_decl in func_decl.args.params]
 			self.curr_function = Function(func_name, params)
 		self.visit(node.body)
@@ -376,6 +382,13 @@ class Compiler(c_ast.NodeVisitor):
 	def visit_Return(self, node):
 		self.visit(node.expr)
 		self.push_ret()
+	
+	def visit_Label(self, node):
+		self.curr_function.labels[node.name] = self.curr_offset() + 1
+		self.visit(node.stmt)
+	
+	def visit_Goto(self, node):
+		self.push(Goto(node.name))
 	
 	def visit_FuncCall(self, node):
 		name = node.name.name

@@ -62,7 +62,7 @@ class RelativeJump(Instruction):
 		self.cond = cond
 	
 	def __str__(self):
-		return f"jump {self.func_start+self.offset} {self.cond}"
+		return f"jump {self.func_start + self.offset} {self.cond}"
 
 class FunctionCall(Instruction):
 	def __init__(self, func_name: str):
@@ -78,6 +78,15 @@ class Return(Instruction):
 	
 	def __str__(self):
 		return f"set @counter __retaddr_{self.func_name}"
+
+class Goto(Instruction):
+	def __init__(self, label: str):
+		self.label = label
+		self.offset: int = None
+		self.func_start: int = None
+	
+	def __str__(self):
+		return f"jump {self.func_start + self.offset} {JumpCondition.always}"
 
 class Print(Instruction):
 	def __init__(self, val: str):
