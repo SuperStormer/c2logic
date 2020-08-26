@@ -19,7 +19,9 @@ Optimization Level:
 0. completely unoptimized.
 1. the default
     - modify variables without using a temporary
-2. turns on some potentially unsafe optimizations
+2. more optimizations
+    - remove uncalled functions
+3. turns on some potentially unsafe optimizations
     - augmented assignment and pre/postincrement/decrement don't modify `__rax`
     - returning from main becomes equivalent to `end`
 
