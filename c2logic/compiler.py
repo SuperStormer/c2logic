@@ -415,7 +415,10 @@ class Compiler(c_ast.NodeVisitor):
 		self.push(RelativeJump(self.loops[-1].start, JumpCondition.always))
 	
 	def visit_Return(self, node):
-		self.visit(node.expr)
+		if node.expr is None:
+			self.push(Set("__rax","null"))
+		else:	
+			self.visit(node.expr)
 		self.push_ret()
 	
 	def visit_Label(self, node):
