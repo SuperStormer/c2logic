@@ -162,7 +162,7 @@ class Read(Instruction):
 		return f"read {self.dest} {self.src} {self.index}"
 
 class Write(Instruction):
-	def __init__(self, dest: str, src: str, index: str):
+	def __init__(self, src: str, dest: str, index: str):
 		self.dest = dest
 		self.src = src
 		self.index = index

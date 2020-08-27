@@ -14,7 +14,7 @@ void shoot(struct MindustryObject obj, double x, double y, double shoot);
 
 struct MindustryObject get_link(double index);
 double read(struct MindustryObject cell, double index);
-void write(struct MindustryObject cell, double index, double val);
+void write(double val, struct MindustryObject cell, double index);
 
 void drawclear(double r, double g, double b);
 void drawcolor(double r, double g, double b);
