@@ -47,6 +47,8 @@ See [include/builtins.h](./include/builtins.h) for API definitions and [examples
 
 # Unsupported Features
 
+-   defining global variables outside of functions - define it in main
+-   recursive calls - use iteration
 -   structs - split it into multiple variables
 -   enums - use an int plus macros
 -   block scoped variables - just use locals

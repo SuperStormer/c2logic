@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pycparser import c_ast, parse_file
 from pycparser.c_ast import (
-	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl
+	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
 )
 
 from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
@@ -50,6 +50,7 @@ class Compiler(c_ast.NodeVisitor):
 		#TODO replace this with "blocks" attr on Function
 		self.loops: list = None
 		self.loop_end: int = None
+		self.special_vars: dict = None
 	
 	def compile(self, filename: str):
 		self.functions = {}
@@ -57,6 +58,7 @@ class Compiler(c_ast.NodeVisitor):
 		self.globals = []
 		self.loops = []
 		self.loop_end = None
+		self.special_vars = {}
 		ast = parse_file(filename, use_cpp=True, cpp_args=["-I", get_include_path()])
 		self.visit(ast)
 		#remove uncalled functions
@@ -144,6 +146,26 @@ class Compiler(c_ast.NodeVisitor):
 			raise NameError(f"Unknown variable {varname}")
 		return varname
 	
+	def get_special_var(self, varname):
+		#avoids special variables clobbering each other
+		if varname not in self.special_vars:
+			self.special_vars[varname] = -1
+		self.special_vars[varname] += 1
+		#print(f"create {varname}_{self.special_vars[varname]}")
+		return f"{varname}_{self.special_vars[varname]}"
+	
+	def delete_special_var(self, varname):
+		name, _, num = varname.rpartition("_")
+		try:
+			if int(num) != self.special_vars[name]:
+				#print(varname, self.special_vars[name])
+				return
+				#raise ValueError(f"{varname} was attempted to be deleted when self.special_vars[{name}] was {num}")
+			#print(f"delete {name}_{self.special_vars[name]}")
+			self.special_vars[name] -= 1
+		except (ValueError, KeyError):  # not deleting a special var, this is normal
+			pass
+	
 	def can_avoid_indirection(self, var="__rax"):
 		top = self.peek()
 		return self.opt_level >= 1 and isinstance(top, Set) and top.dest == var
@@ -180,6 +202,7 @@ class Compiler(c_ast.NodeVisitor):
 			self.curr_function.instructions[offset].offset = self.loop_end
 	
 	def push_ret(self):
+		#TODO make retaddr and local variables use get_special_var and delete_special_var
 		if self.opt_level >= 3 and self.curr_function.name == "main":
 			top = self.peek()
 			if isinstance(top, Set) and top.dest == "__rax":
@@ -193,6 +216,7 @@ class Compiler(c_ast.NodeVisitor):
 			for i, arg in reversed(list(enumerate(args))):
 				if self.can_avoid_indirection(arg):
 					args[i] = self.pop().src
+					self.delete_special_var(arg)
 				else:
 					break
 		return args
@@ -205,15 +229,17 @@ class Compiler(c_ast.NodeVisitor):
 			return "__rax"
 	
 	def get_binary_builtin_args(self, args, name):
-		left_name = f"__{name}_arg0"
+		left_name = self.get_special_var(f"__{name}_arg0")
 		self.visit(args[0])
 		self.set_to_rax(left_name)
 		self.visit(args[1])
 		left = left_name
 		right = "__rax"
 		if self.can_avoid_indirection():
+			self.delete_special_var(right)
 			right = self.pop().src
 		if self.can_avoid_indirection(left_name):
+			self.delete_special_var(left)
 			left = self.pop().src
 		return left, right
 	
@@ -221,8 +247,9 @@ class Compiler(c_ast.NodeVisitor):
 		argnames = []
 		for i, arg in enumerate(args):
 			self.visit(arg)
-			self.set_to_rax(f"__{name}_arg{i}")
-			argnames.append(f"__{name}_arg{i}")
+			argname = self.get_special_var(f"__{name}_arg{i}")
+			self.set_to_rax(argname)
+			argnames.append(argname)
 		return self.optimize_builtin_args(argnames)
 	
 	#visitors
@@ -232,7 +259,10 @@ class Compiler(c_ast.NodeVisitor):
 			self.curr_function = self.functions[func_name]
 		else:
 			func_decl = node.decl.type
-			params = [param_decl.name for param_decl in func_decl.args.params]
+			if func_decl.args is None or isinstance(func_decl.args.params[0], Typename):
+				params = []
+			else:
+				params = [param_decl.name for param_decl in func_decl.args.params]
 			self.curr_function = Function(func_name, params)
 		self.visit(node.body)
 		#implicit return
@@ -257,9 +287,12 @@ class Compiler(c_ast.NodeVisitor):
 		elif isinstance(node.type, FuncDecl):
 			if node.name not in builtins + func_unary_ops + func_binary_ops:
 				#create placeholder function for forward declarations
-				self.functions[node.name] = Function(
-					node.name, [param_decl.name for param_decl in node.type.args.params]
-				)
+				func_decl = node.type
+				if func_decl.args is None or isinstance(func_decl.args.params[0], Typename):
+					params = []
+				else:
+					params = [param_decl.name for param_decl in func_decl.args.params]
+				self.functions[node.name] = Function(node.name, params)
 		elif isinstance(node.type, Struct):
 			if node.type.name != "MindustryObject":
 				#TODO structs
@@ -297,15 +330,17 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_BinaryOp(self, node):
 		self.visit(node.left)
-		self.set_to_rax("__rbx")
+		left = self.get_special_var("__rbx")
+		self.set_to_rax(left)
 		self.visit(node.right)
-		left = "__rbx"
 		right = "__rax"
 		if self.can_avoid_indirection():
 			right = self.pop().src
-		if self.can_avoid_indirection("__rbx"):
+		if self.can_avoid_indirection(left):
+			self.delete_special_var(left)
 			left = self.pop().src
 		self.push(BinaryOp("__rax", left, right, node.op))
+		self.delete_special_var(left)
 	
 	def visit_UnaryOp(self, node):
 		if node.op == "p++" or node.op == "p--":  #postincrement/decrement
@@ -403,13 +438,17 @@ class Compiler(c_ast.NodeVisitor):
 			"printflush": PrintFlush,
 			"enable": Enable,
 			"shoot": Shoot,
-			"get_link": GetLink,
+			"get_link": lambda index: GetLink("__rax", index),
 			"read": lambda cell, index: Read("__rax", cell, index),
 			"write": Write,
 			"drawflush": DrawFlush
 		}
 		if name in builtins_dict:
-			self.push(builtins_dict[name](*self.get_multiple_builtin_args(args, name)))
+			argnames = self.get_multiple_builtin_args(args, name)
+			self.push(builtins_dict[name](*argnames))
+			for argname in argnames:
+				if argname.startswith(f"__{name}_arg"):
+					self.delete_special_var(argname)
 		elif name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
@@ -424,39 +463,47 @@ class Compiler(c_ast.NodeVisitor):
 					self.push(Set("__rax", arg.value[1:-1]))
 				else:
 					self.visit(arg)
-				self.set_to_rax(f"__radar_arg{i}")
-				argnames.append(f"__radar_arg{i}")
+				argname = self.get_special_var(f"__radar_arg{i}")
+				self.set_to_rax(argname)
+				argnames.append(argname)
 			argnames = self.optimize_builtin_args(argnames)
 			self.push(Radar("__rax", *argnames))  #pylint: disable=no-value-for-parameter
+			for argname in argnames:
+				if argname.startswith("__radar_arg"):
+					self.delete_special_var(argname)
 		elif name == "sensor":
 			self.visit(args[0])
-			self.set_to_rax("__sensor_arg0")
+			left = self.get_special_var("__sensor_arg0")
+			self.set_to_rax(left)
 			arg = args[1]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to sensor", node)
 			self.push(Set("__rax", arg.value[1:-1]))
-			left = "__sensor_arg0"
 			right = "__rax"
 			if self.can_avoid_indirection():
 				right = self.pop().src
-			if self.can_avoid_indirection("__sensor_arg0"):
+			if self.can_avoid_indirection(left):
+				self.delete_special_var(left)
 				left = self.pop().src
 			self.push(Sensor("__rax", left, right))
+			if left.startswith("__sensor_arg0"):
+				self.delete_special_var(left)
 		elif name == "end":
 			self.push(End())
 		elif name in draw_funcs:
 			argnames = self.get_multiple_builtin_args(args, name)
 			cmd = draw_funcs[name]
 			self.push(Draw(cmd, *argnames))
+			for argname in argnames:
+				if argname.startswith(f"__{name}_arg"):
+					self.delete_special_var(argname)
 		elif name in func_binary_ops:
-			left, right = self.get_binary_builtin_args(args, "binary")
+			left, right = self.get_binary_builtin_args(args, name)
 			self.push(BinaryOp("__rax", left, right, name))
+			if left.startswith(f"__{name}_arg"):
+				self.delete_special_var(left)
 		elif name in func_unary_ops:
-			self.visit(args[0])
-			if self.can_avoid_indirection():
-				self.push(UnaryOp("__rax", self.pop().src, name))
-			else:
-				self.push(UnaryOp("__rax", "__rax", name))
+			self.push(UnaryOp("__rax", self.get_unary_builtin_arg(args), name))
 		else:
 			try:
 				func = self.functions[name]

@@ -168,7 +168,7 @@ class Write(Instruction):
 		self.index = index
 	
 	def __str__(self):
-		return f"write {self.dest} {self.src} {self.index}"
+		return f"write {self.src} {self.dest} {self.index}"
 
 class Draw(Instruction):
 	def __init__(self, cmd: str, *args):

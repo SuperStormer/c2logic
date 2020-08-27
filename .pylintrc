@@ -11,7 +11,7 @@ enable=similarities
 [BASIC]
 
 [FORMAT]
-max-line-length=130
+max-line-length=100
 # e for error; f for file; fn for function
 good-names=i,j,k,x,y,e,f,fn
 indent-string="\t"
