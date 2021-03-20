@@ -1,5 +1,6 @@
 #ifndef IO_H
 #define IO_H
+#include "c2logic/builtins.h"
 void println(char* s) {
 	print(s);
 	print("\n");

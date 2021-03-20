@@ -271,6 +271,7 @@ class Compiler(c_ast.NodeVisitor):
 			self.push(Set("__rax", "null"))
 			self.push_ret()
 		self.functions[func_name] = self.curr_function
+		self.curr_function = None
 	
 	def visit_Decl(self, node):
 		if isinstance(node.type, TypeDecl):  # variable declaration
@@ -416,8 +417,8 @@ class Compiler(c_ast.NodeVisitor):
 	
 	def visit_Return(self, node):
 		if node.expr is None:
-			self.push(Set("__rax","null"))
-		else:	
+			self.push(Set("__rax", "null"))
+		else:
 			self.visit(node.expr)
 		self.push_ret()
 	
