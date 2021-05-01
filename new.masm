@@ -1,0 +1,73 @@
+# template
+#+begin_src masm
+  control shootp obj unit shoot 0 0
+  control configure obj configure 0 0 0
+  control color obj r g b 0
+#+end_src
+
+# manual
+#+begin_src masm
+ubind type
+#+end_src
+# template
+
+# toggles/set
+#+begin_src masm
+ucontrol boost enable 0 0 0 0
+ucontrol flag value 0 0 0 0
+#+end_src
+
+# direct commands
+#+begin_src masm
+ucontrol idle 0 0 0 0 0
+ucontrol stop 0 0 0 0 0
+ucontrol pathfind 0 0 0 0 0
+ucontrol payDrop 0 0 0 0 0
+#+end_src
+
+# direct with bool
+#+begin_src masm
+ucontrol payTake takeUnits 0 0 0 0
+#+end_src
+
+# xy-direct
+#+begin_src masm
+ucontrol move x y 0 0 0
+ucontrol mine x y 0 0 0
+#+end_src
+
+# xy-param-set
+#+begin_src masm
+ucontrol approach x y r 0 0
+control target x y shoot 0 0
+#+end_src
+
+# xy-param-get
+#+begin_src masm
+ucontrol within x y raduis result 0
+ucontrol getBlock x y type building 0
+#+end_src
+
+# other
+#+begin_src masm
+ucontrol targetp unit shoot 0 0 0
+ucontrol itemDrop to amount 0 0 0
+ucontrol itemTake from item amount 0 0
+ucontrol build x y block rotation config
+#+end_src
+
+
+
+
+# subclass from radar, no 'from' param
+#+begin_src masm
+uradar boss boss player armor 0 order result
+#+end_src
+
+# manual/subclass
+#+begin_src masm
+ulocate ore core enemy @copper outx outy found building
+ulocate building core enemy @copper outx outy found building
+ulocate spawn core enemy @copper outx outy found building
+ulocate damaged core enemy @copper outx outy found building
+#+end_src

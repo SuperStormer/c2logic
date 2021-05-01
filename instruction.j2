@@ -1,0 +1,6 @@
+class {{ subcommand|capitalize }}(Instruction):
+	def __init__(self, {% for param in params %}{{ param }}:str,{% endfor %}):
+		{% for param in params %}self.{{ param }} = {{ param }}
+		{% endfor %}
+	def __str__(self):
+		return f"{{ command }} {{subcommand}} {% for param in params %}{% raw %}{{% endraw %}self.{{ param }}{% raw %}}{% endraw %}{% if not loop.last %} {% endif %}{% endfor %}{% for i in range(length-params|length) %}{% if loop.first %} {% endif %}0{% if not loop.last %} {% endif %}{% endfor %}"
