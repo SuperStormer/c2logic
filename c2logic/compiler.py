@@ -325,7 +325,7 @@ class Compiler(c_ast.NodeVisitor):
 		varname = node.name
 		if varname not in self.functions:
 			varname = self.get_varname(varname)
-		if varname in ("links", "ipt", "counter", "time"):
+		if varname in ("links", "ipt", "counter", "time", "unit"):
 			varname = "@" + varname
 		self.push(Set("__rax", varname))
 	
