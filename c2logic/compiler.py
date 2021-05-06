@@ -461,6 +461,7 @@ class Compiler(c_ast.NodeVisitor):
 		elif name == "radar":
 			argnames = []
 			for i, arg in enumerate(args):
+				# don't visit constants
 				if 1 <= i <= 4:
 					if not isinstance(arg, Constant) or arg.type != "string":
 						raise TypeError("Non-string argument to radar", node)
