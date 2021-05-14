@@ -1,0 +1,3 @@
+{{ subcommand }}({% for param in params %}{% if important[loop.index0] %}void* {{ param }}{% if not loop.last  %}, {% endif %}{% endif %}{% endfor %}){% raw %}{{% endraw %}
+asm("{{ command }} {{ subcommand }} {% for param in params %}{% if important[loop.index0] %}{% raw %}{{% endraw %}{{ param }}{% raw %}}{% endraw %}{% else %}{{ param }}{% endif %}{% if not loop.last %} {% endif %}{% endfor %}");
+{% raw %}}{% endraw %}

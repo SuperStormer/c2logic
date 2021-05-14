@@ -5,3 +5,4 @@
 __pycache__
 compile_flags.txt
 .dir-locals.el
+*.egg-info
