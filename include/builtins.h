@@ -30,11 +30,15 @@ void drawflush(struct MindustryObject display);
 void end();
 
 // builtin binary operators
+double strictEqual(double x, double y);
+double idiv(double x, double y);
 double pow(double x, double y);
+double land(double x, double y);
 double max(double x, double y);
 double min(double x, double y);
-double atan2(double x, double y);
-double dst(double x, double y);
+double angle(double x, double y);
+double len(double x, double y);
+double noise(double x, double y);
 // builtin unary operators
 double abs(double x);
 double log(double x);
