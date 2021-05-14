@@ -129,6 +129,6 @@ void unit_build(double x, double y, char* block, double rotation, char* configur
 double unit_within(double x, double y, double radius) {
 	asm("ucontrol within {x} {y} {radius} {dest} 0");
 }
-MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort, double order) {
+struct MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort, double order) {
 	asm("uradar {target1} {target2} {target3} {sort} 0 {order} {dest}");
 }

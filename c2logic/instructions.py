@@ -88,111 +88,12 @@ class Goto(Instruction):
 	def __str__(self):
 		return f"jump {self.func_start + self.offset} {JumpCondition.always}"
 
-class Print(Instruction):
-	def __init__(self, val: str):
-		self.val = val
-	
-	def __str__(self):
-		return f"print {self.val}"
-
-class PrintFlush(Instruction):
-	def __init__(self, message: str):
-		self.message = message
-	
-	def __str__(self):
-		return f"printflush {self.message}"
-
-class Radar(Instruction):
-	def __init__(
-		self, dest: str, src: str, target1: str, target2: str, target3: str, sort: str, index: str
-	):
-		self.src = src
-		self.dest = dest
-		self.target1 = target1
-		self.target2 = target2
-		self.target3 = target3
-		self.sort = sort
-		self.index = index
-	
-	def __str__(self):
-		return f"radar {self.target1} {self.target2} {self.target3} {self.sort} {self.src} {self.index} {self.dest}"
-
-class Sensor(Instruction):
-	def __init__(self, dest: str, src: str, prop: str):
-		self.dest = dest
-		self.src = src
-		self.prop = prop
-	
-	def __str__(self):
-		return f"sensor {self.dest} {self.src} @{self.prop}"
-
-class Enable(Instruction):
-	def __init__(self, obj: str, enabled: str):
-		self.obj = obj
-		self.enabled = enabled
-	
-	def __str__(self):
-		return f"control enabled {self.obj} {self.enabled} 0 0 0"
-
-class Shoot(Instruction):
-	def __init__(self, obj: str, x: str, y: str, shoot: str):
-		self.obj = obj
-		self.x = x
-		self.y = y
-		self.shoot = shoot
-	
-	def __str__(self):
-		return f"control shoot {self.obj} {self.x} {self.y} {self.shoot} 0"
-
-class GetLink(Instruction):
-	def __init__(self, dest: str, index: str):
-		self.dest = dest
-		self.index = index
-	
-	def __str__(self):
-		return f"getlink {self.dest} {self.index}"
-
-class Read(Instruction):
-	def __init__(self, dest: str, src: str, index: str):
-		self.dest = dest
-		self.src = src
-		self.index = index
-	
-	def __str__(self):
-		return f"read {self.dest} {self.src} {self.index}"
-
-class Write(Instruction):
-	def __init__(self, src: str, dest: str, index: str):
-		self.dest = dest
-		self.src = src
-		self.index = index
-	
-	def __str__(self):
-		return f"write {self.src} {self.dest} {self.index}"
-
-class Draw(Instruction):
-	def __init__(self, cmd: str, *args):
-		self.cmd = cmd
-		self.args = args
-	
-	def __str__(self):
-		args = list(self.args) + ['0'] * (6 - len(self.args))
-		return f"draw {self.cmd} {' '.join(args)}"
-
-class DrawFlush(Instruction):
-	def __init__(self, display: str):
-		self.display = display
-	
-	def __str__(self):
-		return f"drawflush {self.display}"
-
-class End(Instruction):
-	def __str__(self):
-		return "end"
-
 class RawAsm(Instruction):
 	def __init__(self, code: str):
 		self.code = code
 	
 	def __str__(self):
 		return self.code
+
+class ParsedInstruction(Instruction):
+	pass
