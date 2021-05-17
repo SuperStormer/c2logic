@@ -1,7 +1,7 @@
 struct MindustryObject {};
 // builtin instructions
 void print(char* s) {
-	asm("print {s}");
+	asm("print \"{s}\"");
 }
 void printd(double s) {
 	asm("print {s}");
@@ -74,9 +74,7 @@ void drawimage(double x, double y, char* image, double size, double rotation) {
 void drawflush(struct MindustryObject display) {
 	asm("drawflush {display}");
 }
-void end() {
-	asm("end");
-}
+
 // unit commands (not complete; don't know how to return multiple values)
 void ubind(char* type) {
 	asm("ubind @{type}");
