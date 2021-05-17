@@ -131,11 +131,11 @@ class ParsedInstructionFactory():
 			ret_instruction.__setattr__(argn, arg)
 		return ret_instruction
 
-parsed_instructions = {}
+PARSED_INSTRUCTIONS = {}
 for func_name, func in FUNCS.items():
 	argn = [arg_desc[0] for arg_desc in func['args']]
 	argt = [arg_desc[1] for arg_desc in func['args']]
 	assembly_string = func['asm']
-	parsed_instructions[func_name] = ParsedInstructionFactory(
+	PARSED_INSTRUCTIONS[func_name] = ParsedInstructionFactory(
 		func_name, argn, argt, assembly_string
 	)
