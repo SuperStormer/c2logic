@@ -24,6 +24,7 @@ from .instructions import (
 	RawAsm,
 	ParsedInstruction,
 	ParsedInstructionFactory,
+	PARSED_INSTRUCTIONS,
 )
 
 @dataclass
