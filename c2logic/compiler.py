@@ -476,32 +476,8 @@ class Compiler(c_ast.NodeVisitor):
 			for argname in argnames:
 				if argname.startswith("__radar_arg"):
 					self.delete_special_var(argname)
-		elif name == "sensor":
-			self.visit(args[0])
-			left = self.get_special_var("__sensor_arg0")
-			self.set_to_rax(left)
-			arg = args[1]
-			if not isinstance(arg, Constant) or arg.type != "string":
-				raise TypeError("Non-string argument to sensor", node)
-			self.push(Set("__rax", arg.value[1:-1]))
-			right = "__rax"
-			if self.can_avoid_indirection():
-				right = self.pop().src
-			if self.can_avoid_indirection(left):
-				self.delete_special_var(left)
-				left = self.pop().src
-			self.push(Sensor("__rax", left, right))
-			if left.startswith("__sensor_arg0"):
-				self.delete_special_var(left)
 		elif name == "end":
 			self.push(End())
-		elif name in draw_funcs:
-			argnames = self.get_multiple_builtin_args(args, name)
-			cmd = draw_funcs[name]
-			self.push(Draw(cmd, *argnames))
-			for argname in argnames:
-				if argname.startswith(f"__{name}_arg"):
-					self.delete_special_var(argname)
 		elif name in func_binary_ops:
 			left, right = self.get_binary_builtin_args(args, name)
 			self.push(BinaryOp("__rax", left, right, name))
