@@ -107,18 +107,24 @@ class ParsedInstruction(Instruction):
 		return unescaped.format(**self.__dict__)
 
 class ParsedInstructionFactory():
+	RETURN_REGISTER = "__rax"
+	
 	def __init__(self, name, argn, argt, assembly_string):
 		self.argn = argn
 		self.argt = argt
 		self.name = name
 		self.assembly_string = assembly_string
 	
+	@property
+	def returns_data(self):
+		return "{dest}" in self.assembly_string
+	
 	def __call__(self, *args):
 		ret_instruction = ParsedInstruction()
 		ret_instruction.argt = self.argt
 		ret_instruction.assembly_string = self.assembly_string
-		if "{dest}" in self.assembly_string:
-			ret_instruction.__setattr__('dest', args[0])
+		if self.returns_data:
+			ret_instruction.__setattr__('dest', self.RETURN_REGISTER)
 			args = args[1:]
 		ret_instruction.name = self.name
 		for arg, argn in zip(args, self.argn):
