@@ -1,3 +1,4 @@
+from pathlib import Path
 from pycparser import parse_file, c_ast
 
 def extract_asm(body: c_ast.Compound):
@@ -45,7 +46,7 @@ class InstructionReader(c_ast.NodeVisitor):
 		except AttributeError:
 			record['args'] = tuple()
 
-instructions = parse_file('instruction_definition.c', use_cpp=True)
+instructions = parse_file(str(Path(__file__).parent / 'instruction_definition.c'), use_cpp=True)
 reader = InstructionReader()
 reader.visit(instructions)
 FUNCS = reader.funcs
