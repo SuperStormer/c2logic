@@ -7,6 +7,7 @@ setuptools.setup(
 	descripton="Compiles C code to Mindustry logic.",
 	long_description=long_description,
 	long_description_content_type="text/markdown",
+	include_package_data=True,
 	packages=["c2logic"],
 	license="MIT",
 	author="SuperStormer",
