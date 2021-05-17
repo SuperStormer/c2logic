@@ -40,7 +40,7 @@ See [include/builtins.h](./include/builtins.h) for API definitions and [examples
 
 # Supported Features
 
--   all Mindustry instructions as of BE 9420
+-   all Mindustry instructions as of BE 20879 with single data returns (nothing that sets both outx and outy for example)
 -   all C control flow structures except switch
 -   functions
 -   local/global variables
