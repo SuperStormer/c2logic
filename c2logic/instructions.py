@@ -125,7 +125,6 @@ class ParsedInstructionFactory():
 		ret_instruction.assembly_string = self.assembly_string
 		if self.returns_data:
 			ret_instruction.__setattr__('dest', self.RETURN_REGISTER)
-			args = args[1:]
 		ret_instruction.name = self.name
 		for arg, argn in zip(args, self.argn):
 			ret_instruction.__setattr__(argn, arg)
