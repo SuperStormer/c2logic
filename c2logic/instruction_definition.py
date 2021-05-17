@@ -1,4 +1,4 @@
-from pycparser import c_parser, c_ast
+from pycparser import parse_file, c_ast
 
 def extract_asm(body: c_ast.Compound):
 	for item in body.block_items:
@@ -45,10 +45,7 @@ class InstructionReader(c_ast.NodeVisitor):
 		except AttributeError:
 			record['args'] = tuple()
 
-if __name__ == "__main__":
-	parser = c_parser.CParser()
-	with open('/home/raphael/cloned-repos/c2logic/include/builtins.c') as c_file:
-		text = c_file.read()
-		my_ast = parser.parse(text)
-	reader = InstructionReader()
-	reader.visit(my_ast)
+instructions = parse_file('instruction_definition.c', use_cpp=True)
+reader = InstructionReader()
+reader.visit(instructions)
+FUNCS = reader.funcs
