@@ -8,7 +8,7 @@ from pycparser.c_ast import (
 	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
 )
 
-from .consts import builtins, func_binary_ops, func_unary_ops
+from .consts import func_binary_ops, func_unary_ops
 from .instructions import (
 	Instruction,
 	Noop,
@@ -299,7 +299,7 @@ class Compiler(c_ast.NodeVisitor):
 				self.visit(node.init)
 				self.set_to_rax(varname)
 		elif isinstance(node.type, FuncDecl):
-			if node.name not in builtins + func_unary_ops + func_binary_ops:
+			if node.name not in list(PARSED_INSTRUCTIONS.keys()) + func_unary_ops + func_binary_ops:
 				#create placeholder function for forward declarations
 				func_decl = node.type
 				if func_decl.args is None or isinstance(func_decl.args.params[0], Typename):
