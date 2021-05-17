@@ -1,3 +1,6 @@
+:PROPERTIES:
+  :header-args: :tangle new.masm :comments link :noweb yes
+  :END:
 * manual
 #+begin_src masm
 ubind type
