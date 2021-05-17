@@ -10,8 +10,20 @@ from pycparser.c_ast import (
 
 from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
 from .instructions import (
-	BinaryOp, Draw, DrawFlush, Enable, End, FunctionCall, GetLink, Goto, Instruction, JumpCondition,
-	Print, PrintFlush, Radar, RawAsm, Read, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp, Write
+	Instruction,
+	Noop,
+	Set,
+	BinaryOp,
+	UnaryOp,
+	JumpCondition,
+	FunctionCall,
+	Return,
+	RelativeJump,
+	End,
+	Goto,
+	RawAsm,
+	ParsedInstruction,
+	ParsedInstructionFactory,
 )
 
 @dataclass
