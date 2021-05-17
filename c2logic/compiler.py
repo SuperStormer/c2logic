@@ -8,7 +8,7 @@ from pycparser.c_ast import (
 	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
 )
 
-from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
+from .consts import builtins, func_binary_ops, func_unary_ops
 from .instructions import (
 	Instruction,
 	Noop,
