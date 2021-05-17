@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+
 from .consts import binary_op_inverses, binary_ops, condition_ops, unary_ops
+from .instruction_definition import FUNCS
 
 class Instruction:
 	pass
@@ -88,6 +90,10 @@ class Goto(Instruction):
 	def __str__(self):
 		return f"jump {self.func_start + self.offset} {JumpCondition.always}"
 
+class End(Instruction):
+	def __str__(self):
+		return "end"
+
 class RawAsm(Instruction):
 	def __init__(self, code: str):
 		self.code = code
@@ -96,4 +102,34 @@ class RawAsm(Instruction):
 		return self.code
 
 class ParsedInstruction(Instruction):
-	pass
+	def __str__(self):
+		unescaped = self.assembly_string.replace('\\', '')
+		return unescaped.format(**self.__dict__)
+
+class ParsedInstructionFactory():
+	def __init__(self, name, argn, argt, assembly_string):
+		self.argn = argn
+		self.argt = argt
+		self.name = name
+		self.assembly_string = assembly_string
+	
+	def __call__(self, *args):
+		ret_instruction = ParsedInstruction()
+		ret_instruction.argt = self.argt
+		ret_instruction.assembly_string = self.assembly_string
+		if "{dest}" in self.assembly_string:
+			ret_instruction.__setattr__('dest', args[0])
+			args = args[1:]
+		ret_instruction.name = self.name
+		for arg, argn in zip(args, self.argn):
+			ret_instruction.__setattr__(argn, arg)
+		return ret_instruction
+
+parsed_instructions = {}
+for func_name, func in FUNCS.items():
+	argn = [arg_desc[0] for arg_desc in func['args']]
+	argt = [arg_desc[1] for arg_desc in func['args']]
+	assembly_string = func['asm']
+	parsed_instructions[func_name] = ParsedInstructionFactory(
+		func_name, argn, argt, assembly_string
+	)
