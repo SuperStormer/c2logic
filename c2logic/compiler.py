@@ -449,45 +449,29 @@ class Compiler(c_ast.NodeVisitor):
 		else:
 			args = []
 		#TODO avoid duplication in builtin calls
-		builtins_dict = {
-			"print": Print,
-			"printd": Print,
-			"printflush": PrintFlush,
-			"enable": Enable,
-			"shoot": Shoot,
-			"get_link": lambda index: GetLink("__rax", index),
-			"read": lambda cell, index: Read("__rax", cell, index),
-			"write": Write,
-			"drawflush": DrawFlush
-		}
-		if name in builtins_dict:
-			argnames = self.get_multiple_builtin_args(args, name)
-			self.push(builtins_dict[name](*argnames))
-			for argname in argnames:
-				if argname.startswith(f"__{name}_arg"):
-					self.delete_special_var(argname)
-		elif name == "asm":
+		if name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
-		elif name == "radar":
+		elif name in PARSED_INSTRUCTIONS.keys():
+			instruction = PARSED_INSTRUCTIONS[name]
 			argnames = []
 			for i, arg in enumerate(args):
 				# don't visit constants
-				if 1 <= i <= 4:
+				if instruction.argt[i] == "string":
 					if not isinstance(arg, Constant) or arg.type != "string":
-						raise TypeError("Non-string argument to radar", node)
+						raise TypeError(f"Non-string argument to {name}", node)
 					self.push(Set("__rax", arg.value[1:-1]))
 				else:
 					self.visit(arg)
-				argname = self.get_special_var(f"__radar_arg{i}")
+				argname = self.get_special_var(f"__{name}_arg{i}")
 				self.set_to_rax(argname)
 				argnames.append(argname)
 			argnames = self.optimize_builtin_args(argnames)
-			self.push(Radar("__rax", *argnames))  #pylint: disable=no-value-for-parameter
+			self.push(instruction(*argnames))  #pylint: disable=no-value-for-parameter
 			for argname in argnames:
-				if argname.startswith("__radar_arg"):
+				if argname.startswith(f"__{name}_arg"):
 					self.delete_special_var(argname)
 		elif name == "end":
 			self.push(End())
