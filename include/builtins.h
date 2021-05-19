@@ -52,7 +52,8 @@ void unit_mine(double x, double y);
 void unit_flag(double value);
 void unit_build(double x, double y, char* block, double rotation, char* configure);
 double unit_within(double x, double y, double radius);
-struct MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort, double order);
+struct MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort,
+								  double order);
 
 // builtin binary operators
 double pow(double x, double y);
