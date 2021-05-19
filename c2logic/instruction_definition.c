@@ -107,7 +107,7 @@ void unit_itemDrop(struct MindustryObject obj, double amount) {
 	asm("ucontrol itemDrop {obj} {amount} 0 0 0");
 }
 void unit_itemTake(struct MindustryObject obj, char* item, double amount) {
-	asm("ucontrol itemTake {obj} {item} {amount} 0 0");
+	asm("ucontrol itemTake {obj} @{item} {amount} 0 0");
 }
 void unit_payDrop() {
 	asm("ucontrol payDrop 0 0 0 0 0");
