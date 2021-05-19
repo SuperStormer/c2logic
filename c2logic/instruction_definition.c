@@ -103,16 +103,16 @@ void unit_target(double x, double y, double shoot) {
 void unit_targetp(double unit, double shoot) {
 	asm("ucontrol targetp {unit} {shoot} 0 0 0");
 }
-void unit_itemDrop(struct MindustryObject obj, double amount) {
+void unit_item_drop(struct MindustryObject obj, double amount) {
 	asm("ucontrol itemDrop {obj} {amount} 0 0 0");
 }
-void unit_itemTake(struct MindustryObject obj, char* item, double amount) {
+void unit_item_take(struct MindustryObject obj, char* item, double amount) {
 	asm("ucontrol itemTake {obj} @{item} {amount} 0 0");
 }
-void unit_payDrop() {
+void unit_pay_drop() {
 	asm("ucontrol payDrop 0 0 0 0 0");
 }
-void unit_payTake(double takeUnits) {
+void unit_pay_take(double takeUnits) {
 	asm("ucontrol payTake {takeUnits} 0 0 0 0");
 }
 void unit_mine(double x, double y) {
@@ -127,6 +127,7 @@ void unit_build(double x, double y, char* block, double rotation, char* configur
 double unit_within(double x, double y, double radius) {
 	asm("ucontrol within {x} {y} {radius} {dest} 0");
 }
-struct MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort, double order) {
+struct MindustryObject unit_radar(char* target1, char* target2, char* target3, char* sort,
+								  double order) {
 	asm("uradar {target1} {target2} {target3} {sort} 0 {order} {dest}");
 }
