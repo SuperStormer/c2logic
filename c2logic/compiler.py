@@ -8,7 +8,7 @@ from pycparser.c_ast import (
 	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
 )
 
-from .consts import func_binary_ops, func_unary_ops
+from .consts import func_binary_ops, func_unary_ops, SPECIAL_VARS
 from .instructions import (
 	Instruction,
 	Noop,
@@ -338,7 +338,7 @@ class Compiler(c_ast.NodeVisitor):
 		varname = node.name
 		if varname not in self.functions:
 			varname = self.get_varname(varname)
-		if varname in ("links", "ipt", "counter", "time", "unit"):
+		if varname in SPECIAL_VARS:
 			varname = "@" + varname
 		self.push(Set("__rax", varname))
 	
