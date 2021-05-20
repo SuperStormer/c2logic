@@ -11,8 +11,8 @@ binary_ops = {
 	"<=": "lessThanEq",
 	">": "greaterThan",
 	">=": "greaterThanEq",
-	">>": "shl",
-	"<<": "shr",
+	">>": "shr",
+	"<<": "shl",
 	"|": "or",
 	"&": "and",
 	"^": "xor"
