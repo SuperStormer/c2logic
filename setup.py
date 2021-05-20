@@ -3,7 +3,7 @@ with open("README.md", "r") as f:
 	long_description = f.read()
 setuptools.setup(
 	name="c2logic",
-	version="2.3.5",
+	version="2.4.0",
 	descripton="Compiles C code to Mindustry logic.",
 	long_description=long_description,
 	long_description_content_type="text/markdown",
