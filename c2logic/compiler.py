@@ -449,7 +449,14 @@ class Compiler(c_ast.NodeVisitor):
 		else:
 			args = []
 		#TODO avoid duplication in builtin calls
-		if name == "asm":
+		if name == "print":
+			argnames = self.get_multiple_builtin_args(args, name)
+			self.push(PARSED_INSTRUCTIONS[name](*argnames))
+			for argname in argnames:
+				if argname.startswith(f"__{name}_arg"):
+					self.delete_special_var(argname)
+		
+		elif name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to asm", node)

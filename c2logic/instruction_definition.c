@@ -1,7 +1,7 @@
 struct MindustryObject {};
 // builtin instructions
 void print(char* s) {
-	asm("print \"{s}\"");
+	asm("print {s}");
 }
 void printd(double s) {
 	asm("print {s}");
