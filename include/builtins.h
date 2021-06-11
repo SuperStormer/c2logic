@@ -8,7 +8,7 @@ void printd(double s);
 void printflush(struct MindustryObject message);
 
 struct MindustryObject radar(struct MindustryObject obj, char* target1, char* target2,
-							 char* target3, char* sort, double index);
+							 char* target3, char* sort, double order);
 double sensor(struct MindustryObject obj, char* prop);
 void enable(struct MindustryObject obj, double enabled);
 void configure(struct MindustryObject obj, char* configure);

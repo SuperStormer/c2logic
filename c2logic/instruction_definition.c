@@ -10,8 +10,8 @@ void printflush(struct MindustryObject message) {
 	asm("printflush {message}");
 }
 struct MindustryObject radar(struct MindustryObject obj, char* target1, char* target2,
-							 char* target3, char* sort, double index) {
-	asm("radar {target1} {target2} {target3} {sort} {obj} {index} {dest}");
+							 char* target3, char* sort, double order) {
+	asm("radar {target1} {target2} {target3} {sort} {obj} {order} {dest}");
 }
 double sensor(struct MindustryObject obj, char* prop) {
 	asm("sensor {dest} {obj} @{prop}");
