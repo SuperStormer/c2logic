@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+
 from .consts import binary_op_inverses, binary_ops, condition_ops, unary_ops
+from .instruction_definition import FUNCS
 
 class Instruction:
 	pass
@@ -88,104 +90,6 @@ class Goto(Instruction):
 	def __str__(self):
 		return f"jump {self.func_start + self.offset} {JumpCondition.always}"
 
-class Print(Instruction):
-	def __init__(self, val: str):
-		self.val = val
-	
-	def __str__(self):
-		return f"print {self.val}"
-
-class PrintFlush(Instruction):
-	def __init__(self, message: str):
-		self.message = message
-	
-	def __str__(self):
-		return f"printflush {self.message}"
-
-class Radar(Instruction):
-	def __init__(
-		self, dest: str, src: str, target1: str, target2: str, target3: str, sort: str, index: str
-	):
-		self.src = src
-		self.dest = dest
-		self.target1 = target1
-		self.target2 = target2
-		self.target3 = target3
-		self.sort = sort
-		self.index = index
-	
-	def __str__(self):
-		return f"radar {self.target1} {self.target2} {self.target3} {self.sort} {self.src} {self.index} {self.dest}"
-
-class Sensor(Instruction):
-	def __init__(self, dest: str, src: str, prop: str):
-		self.dest = dest
-		self.src = src
-		self.prop = prop
-	
-	def __str__(self):
-		return f"sensor {self.dest} {self.src} @{self.prop}"
-
-class Enable(Instruction):
-	def __init__(self, obj: str, enabled: str):
-		self.obj = obj
-		self.enabled = enabled
-	
-	def __str__(self):
-		return f"control enabled {self.obj} {self.enabled} 0 0 0"
-
-class Shoot(Instruction):
-	def __init__(self, obj: str, x: str, y: str, shoot: str):
-		self.obj = obj
-		self.x = x
-		self.y = y
-		self.shoot = shoot
-	
-	def __str__(self):
-		return f"control shoot {self.obj} {self.x} {self.y} {self.shoot} 0"
-
-class GetLink(Instruction):
-	def __init__(self, dest: str, index: str):
-		self.dest = dest
-		self.index = index
-	
-	def __str__(self):
-		return f"getlink {self.dest} {self.index}"
-
-class Read(Instruction):
-	def __init__(self, dest: str, src: str, index: str):
-		self.dest = dest
-		self.src = src
-		self.index = index
-	
-	def __str__(self):
-		return f"read {self.dest} {self.src} {self.index}"
-
-class Write(Instruction):
-	def __init__(self, src: str, dest: str, index: str):
-		self.dest = dest
-		self.src = src
-		self.index = index
-	
-	def __str__(self):
-		return f"write {self.src} {self.dest} {self.index}"
-
-class Draw(Instruction):
-	def __init__(self, cmd: str, *args):
-		self.cmd = cmd
-		self.args = args
-	
-	def __str__(self):
-		args = list(self.args) + ['0'] * (6 - len(self.args))
-		return f"draw {self.cmd} {' '.join(args)}"
-
-class DrawFlush(Instruction):
-	def __init__(self, display: str):
-		self.display = display
-	
-	def __str__(self):
-		return f"drawflush {self.display}"
-
 class End(Instruction):
 	def __str__(self):
 		return "end"
@@ -196,3 +100,41 @@ class RawAsm(Instruction):
 	
 	def __str__(self):
 		return self.code
+
+class ParsedInstruction(Instruction):
+	def __str__(self):
+		unescaped = self.assembly_string.replace('\\', '')
+		return unescaped.format(**self.__dict__)
+
+class ParsedInstructionFactory():
+	RETURN_REGISTER = "__rax"
+	
+	def __init__(self, name, argn, argt, assembly_string):
+		self.argn = argn
+		self.argt = argt
+		self.name = name
+		self.assembly_string = assembly_string
+	
+	@property
+	def returns_data(self):
+		return "{dest}" in self.assembly_string
+	
+	def __call__(self, *args):
+		ret_instruction = ParsedInstruction()
+		ret_instruction.argt = self.argt
+		ret_instruction.assembly_string = self.assembly_string
+		if self.returns_data:
+			ret_instruction.__setattr__('dest', self.RETURN_REGISTER)
+		ret_instruction.name = self.name
+		for arg, argn in zip(args, self.argn):
+			ret_instruction.__setattr__(argn, arg)
+		return ret_instruction
+
+PARSED_INSTRUCTIONS = {}
+for func_name, func in FUNCS.items():
+	argn = [arg_desc[0] for arg_desc in func['args']]
+	argt = [arg_desc[1] for arg_desc in func['args']]
+	assembly_string = func['asm']
+	PARSED_INSTRUCTIONS[func_name] = ParsedInstructionFactory(
+		func_name, argn, argt, assembly_string
+	)

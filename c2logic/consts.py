@@ -11,8 +11,8 @@ binary_ops = {
 	"<=": "lessThanEq",
 	">": "greaterThan",
 	">=": "greaterThanEq",
-	">>": "shl",
-	"<<": "shr",
+	">>": "shr",
+	"<<": "shl",
 	"|": "or",
 	"&": "and",
 	"^": "xor"
@@ -26,23 +26,14 @@ condition_ops = {
 	">": "greaterThan",
 	">=": "greaterThanEq"
 }
-#TODO remove negate b/c its deprecated
-unary_ops = {"-": "negate", "~": "not"}
+unary_ops = {"~": "not"}
 
 binary_op_inverses = {"==": "!=", "!=": "==", "<": ">=", "<=": ">", ">": "<=", ">=": "<"}
 
-func_binary_ops = ["pow", "max", "min", "atan2", "dst"]
+func_binary_ops = ["pow", "max", "min", "angle", "len", "land", "idiv", "strictEqual", "noise"]
 func_unary_ops = ["abs", "log", "log10", "sin", "cos", "tan", "floor", "ceil", "sqrt", "rand"]
 binary_ops.update(dict(zip(func_binary_ops, func_binary_ops)))
 unary_ops.update(dict(zip(func_unary_ops, func_unary_ops)))
-
-draw_funcs = {
-	"draw" + func.lower(): func
-	for func in
-	["clear", "color", "stroke", "line", "rect", "lineRect", "poly", "linePoly", "triangle"]
-}
-
-builtins = [
-	"print", "printd", "printflush", "radar", "sensor", "enable", "shoot", "get_link", "read",
-	"write", "drawflush", "end"
-] + list(draw_funcs.keys())
+SPECIAL_VARS = (
+	'counter', 'ipt', 'links', 'maph', 'mapw', 'this', 'thisx', 'thisy', 'tick', 'time', 'unit'
+)

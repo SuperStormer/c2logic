@@ -8,10 +8,23 @@ from pycparser.c_ast import (
 	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
 )
 
-from .consts import builtins, draw_funcs, func_binary_ops, func_unary_ops
+from .consts import func_binary_ops, func_unary_ops, SPECIAL_VARS
 from .instructions import (
-	BinaryOp, Draw, DrawFlush, Enable, End, FunctionCall, GetLink, Goto, Instruction, JumpCondition,
-	Print, PrintFlush, Radar, RawAsm, Read, RelativeJump, Return, Sensor, Set, Shoot, UnaryOp, Write
+	Instruction,
+	Noop,
+	Set,
+	BinaryOp,
+	UnaryOp,
+	JumpCondition,
+	FunctionCall,
+	Return,
+	RelativeJump,
+	End,
+	Goto,
+	RawAsm,
+	ParsedInstruction,
+	ParsedInstructionFactory,
+	PARSED_INSTRUCTIONS,
 )
 
 @dataclass
@@ -286,7 +299,7 @@ class Compiler(c_ast.NodeVisitor):
 				self.visit(node.init)
 				self.set_to_rax(varname)
 		elif isinstance(node.type, FuncDecl):
-			if node.name not in builtins + func_unary_ops + func_binary_ops:
+			if node.name not in list(PARSED_INSTRUCTIONS.keys()) + func_unary_ops + func_binary_ops:
 				#create placeholder function for forward declarations
 				func_decl = node.type
 				if func_decl.args is None or isinstance(func_decl.args.params[0], Typename):
@@ -325,7 +338,7 @@ class Compiler(c_ast.NodeVisitor):
 		varname = node.name
 		if varname not in self.functions:
 			varname = self.get_varname(varname)
-		if varname in ("links", "ipt", "counter", "time"):
+		if varname in SPECIAL_VARS:
 			varname = "@" + varname
 		self.push(Set("__rax", varname))
 	
@@ -436,71 +449,39 @@ class Compiler(c_ast.NodeVisitor):
 		else:
 			args = []
 		#TODO avoid duplication in builtin calls
-		builtins_dict = {
-			"print": Print,
-			"printd": Print,
-			"printflush": PrintFlush,
-			"enable": Enable,
-			"shoot": Shoot,
-			"get_link": lambda index: GetLink("__rax", index),
-			"read": lambda cell, index: Read("__rax", cell, index),
-			"write": Write,
-			"drawflush": DrawFlush
-		}
-		if name in builtins_dict:
+		if name == "print":
 			argnames = self.get_multiple_builtin_args(args, name)
-			self.push(builtins_dict[name](*argnames))
+			self.push(PARSED_INSTRUCTIONS[name](*argnames))
 			for argname in argnames:
 				if argname.startswith(f"__{name}_arg"):
 					self.delete_special_var(argname)
+		
 		elif name == "asm":
 			arg = args[0]
 			if not isinstance(arg, Constant) or arg.type != "string":
 				raise TypeError("Non-string argument to asm", node)
 			self.push(RawAsm(arg.value[1:-1]))
-		elif name == "radar":
+		elif name in PARSED_INSTRUCTIONS.keys():
+			instruction = PARSED_INSTRUCTIONS[name]
 			argnames = []
 			for i, arg in enumerate(args):
-				if 1 <= i <= 4:
+				# don't visit constants
+				if instruction.argt[i] == "string":
 					if not isinstance(arg, Constant) or arg.type != "string":
-						raise TypeError("Non-string argument to radar", node)
+						raise TypeError(f"Non-string argument to {name}", node)
 					self.push(Set("__rax", arg.value[1:-1]))
 				else:
 					self.visit(arg)
-				argname = self.get_special_var(f"__radar_arg{i}")
+				argname = self.get_special_var(f"__{name}_arg{i}")
 				self.set_to_rax(argname)
 				argnames.append(argname)
 			argnames = self.optimize_builtin_args(argnames)
-			self.push(Radar("__rax", *argnames))  #pylint: disable=no-value-for-parameter
-			for argname in argnames:
-				if argname.startswith("__radar_arg"):
-					self.delete_special_var(argname)
-		elif name == "sensor":
-			self.visit(args[0])
-			left = self.get_special_var("__sensor_arg0")
-			self.set_to_rax(left)
-			arg = args[1]
-			if not isinstance(arg, Constant) or arg.type != "string":
-				raise TypeError("Non-string argument to sensor", node)
-			self.push(Set("__rax", arg.value[1:-1]))
-			right = "__rax"
-			if self.can_avoid_indirection():
-				right = self.pop().src
-			if self.can_avoid_indirection(left):
-				self.delete_special_var(left)
-				left = self.pop().src
-			self.push(Sensor("__rax", left, right))
-			if left.startswith("__sensor_arg0"):
-				self.delete_special_var(left)
-		elif name == "end":
-			self.push(End())
-		elif name in draw_funcs:
-			argnames = self.get_multiple_builtin_args(args, name)
-			cmd = draw_funcs[name]
-			self.push(Draw(cmd, *argnames))
+			self.push(instruction(*argnames))  #pylint: disable=no-value-for-parameter
 			for argname in argnames:
 				if argname.startswith(f"__{name}_arg"):
 					self.delete_special_var(argname)
+		elif name == "end":
+			self.push(End())
 		elif name in func_binary_ops:
 			left, right = self.get_binary_builtin_args(args, name)
 			self.push(BinaryOp("__rax", left, right, name))
