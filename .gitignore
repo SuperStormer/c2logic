@@ -9,3 +9,4 @@ compile_flags.txt
 *.masm
 /build/
 /dist/
+/include/G*
