@@ -340,6 +340,8 @@ class Compiler(c_ast.NodeVisitor):
 			varname = self.get_varname(varname)
 		if varname in SPECIAL_VARS:
 			varname = "@" + varname
+		if varname.startswith("_at_"):
+			varname = "@" + varname[4:].replace("_", '-')
 		self.push(Set("__rax", varname))
 	
 	def visit_BinaryOp(self, node):
