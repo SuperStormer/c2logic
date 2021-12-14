@@ -55,6 +55,13 @@ class Variable():
 	name: str
 """
 
+def numify(i):
+	if i.startswith('0x'):
+		return int(i[2:],16)
+	else:
+		return int(i)
+
+
 def int_constant_fold(node):
 	if isinstance(node, ast_BinaryOp):
 		left = int_constant_fold(node.left)
@@ -64,7 +71,7 @@ def int_constant_fold(node):
 		) and left.type == 'int' and right.type == 'int':
 			try:
 				new_constant = Constant(
-					'int', str(binary_ops_python[node.op](int(left.value), int(right.value)))
+					'int', str(int(binary_ops_python[node.op](numify(left.value), numify(right.value))))
 				)
 				return new_constant
 			except KeyError:
