@@ -21,6 +21,7 @@ Optimization Level:
     - modify variables without using a temporary
 2. more optimizations
     - remove uncalled functions
+    - constant folding
 3. turns on some potentially unsafe optimizations
     - augmented assignment and pre/postincrement/decrement don't modify `__rax`
     - returning from main becomes equivalent to `end`

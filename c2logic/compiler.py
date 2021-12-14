@@ -5,10 +5,11 @@ from dataclasses import dataclass
 
 from pycparser import c_ast, parse_file
 from pycparser.c_ast import (
-	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename
+	Compound, Constant, DeclList, Enum, FileAST, FuncDecl, Struct, TypeDecl, Typename, BinaryOp as
+	ast_BinaryOp
 )
 
-from .consts import func_binary_ops, func_unary_ops, SPECIAL_VARS
+from .consts import func_binary_ops, func_unary_ops, SPECIAL_VARS, binary_ops_python
 from .instructions import (
 	Instruction,
 	Noop,
@@ -53,6 +54,29 @@ class Variable():
 	type: str
 	name: str
 """
+
+def int_constant_fold(node):
+	if isinstance(node, ast_BinaryOp):
+		left = int_constant_fold(node.left)
+		right = int_constant_fold(node.right)
+		if isinstance(left, Constant) and isinstance(
+			right, Constant
+		) and left.type == 'int' and right.type == 'int':
+			try:
+				new_constant = Constant(
+					'int', str(binary_ops_python[node.op](int(left.value), int(right.value)))
+				)
+				return new_constant
+			except KeyError:
+				node.left = left
+				node.right = right
+				return node
+		else:
+			node.left = left
+			node.right = right
+			return node
+	else:
+		return node
 
 class Compiler(c_ast.NodeVisitor):
 	def __init__(self, opt_level=0):
@@ -345,6 +369,16 @@ class Compiler(c_ast.NodeVisitor):
 		self.push(Set("__rax", varname))
 	
 	def visit_BinaryOp(self, node):
+		if self.opt_level >= 2:
+			new_node = int_constant_fold(node)
+			if isinstance(new_node, ast_BinaryOp):
+				self.visit_BinaryOp_base(new_node)
+			else:
+				self.visit(new_node)
+		else:
+			self.visit_BinaryOp_base(node)
+	
+	def visit_BinaryOp_base(self, node):
 		self.visit(node.left)
 		left = self.get_special_var("__rbx")
 		self.set_to_rax(left)

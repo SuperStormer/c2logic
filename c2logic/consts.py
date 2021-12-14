@@ -1,4 +1,6 @@
 # see https://github.com/Anuken/Mindustry/blob/master/core/src/mindustry/logic/LogicOp.java
+import operator
+
 binary_ops = {
 	"+": "add",
 	"-": "sub",
@@ -17,7 +19,24 @@ binary_ops = {
 	"&": "and",
 	"^": "xor"
 }
-
+binary_ops_python = {
+	"+": operator.add,
+	"-": operator.sub,
+	"*": operator.mul,
+	"/": operator.floordiv,
+	"%": operator.mod,
+	"==": operator.eq,
+	"!=": operator.ne,
+	"<": operator.lt,
+	"<=": operator.le,
+	">": operator.gt,
+	">=": operator.ge,
+	">>": operator.rshift,
+	"<<": operator.lshift,
+	"|": operator.or_,
+	"&": operator.and_,
+	"^": operator.xor,
+}
 condition_ops = {
 	"==": "equal",
 	"!=": "notEqual",
